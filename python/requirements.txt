@@ -1,0 +1,17 @@
+futures;python_version<="2.7"
+python-dateutil
+requests>=2.9.2
+vcrpy<2.0.0 #2.0 breaks python 3.4
+azure-common
+cryptography>=1.3.0;python_version!="3.3"
+cryptography<=1.9.0;python_version=="3.3"
+adal
+html5lib
+lxml
+asyncio
+applicationinsights
+azure-cognitiveservices-vision-computervision>=0.3.0  # sample won't work with previous versions
+azure-cognitiveservices-vision-contentmoderator>=1.0.0  # sample won't work with previous versions
+azure-cognitiveservices-vision-customvision>=0.4.0  # sample won't work with previous versions
+azure-cognitiveservices-vision-face
+pandas
