@@ -135,7 +135,6 @@ class BBoxHelper():
             self.ocrconfig=BBOXConfig.from_json(json.loads(json_file.read()))
         log_file_path = path.join(path.dirname(path.abspath(__file__)), 'logging.conf')
         logging.config.fileConfig(log_file_path)
-        # logging.config.fileConfig('logging.conf')
         self.logger = logging.getLogger('bboxhelper')  # get a logger
 
     def __rotateBoundingBox(self,Width:float,Height:float,boundingBox:List[BBOXPoint],rotationv:int):
@@ -205,6 +204,23 @@ class BBoxHelper():
 
         response.Text = str(newtext)
         return response
+
+    def __minXminY(self,index,prevline,line): 
+        prevline.BoundingBox[index].X = min(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
+        prevline.BoundingBox[index].Y = min(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
+        return prevline.BoundingBox[index]
+    def __minXmaxY(self,index,prevline,line): 
+        prevline.BoundingBox[index].X = min(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
+        prevline.BoundingBox[index].Y = max(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
+        return prevline.BoundingBox[index]
+    def __maxXminY(self,index,prevline,line):
+        prevline.BoundingBox[index].X = max(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
+        prevline.BoundingBox[index].Y = min(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
+        return prevline.BoundingBox[index]
+    def __maxXmaxY(self,index,prevline,line): 
+        prevline.BoundingBox[index].X = max(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
+        prevline.BoundingBox[index].Y = max(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
+        return prevline.BoundingBox[index]
 
     def __processLineBoundingBoxes(self, layout:BBOXPageLayout, alignment:str): 
         boxref = 0
@@ -285,29 +301,10 @@ class BBoxHelper():
                     # //Merge current box with previous 
                     prevline.Text += " " + line.Text;
                     # //Merge the BoundingBox coordinates
-                    if ( alignment == LeftAlignment):
-                        # // Max X 
-                        prevline.BoundingBox[1].X = max(prevline.BoundingBox[1].X, line.BoundingBox[1].X)
-                        prevline.BoundingBox[2] = line.BoundingBox[2]
-                        prevline.BoundingBox[3].Y = line.BoundingBox[3].Y
-                    elif (alignment == RightAlignment):
-                        # // Min X 
-                        prevline.BoundingBox[0].X = min(prevline.BoundingBox[0].X, line.BoundingBox[0].X)
-                        prevline.BoundingBox[3] = line.BoundingBox[3]
-                        prevline.BoundingBox[2].Y = line.BoundingBox[2].Y
-                    elif ( alignment == CenteredAlignment):
-                        # // Min X 
-                        prevline.BoundingBox[0].X = min(prevline.BoundingBox[0].X, line.BoundingBox[0].X)
-                        # // Max X 
-                        prevline.BoundingBox[1].X = max(prevline.BoundingBox[1].X, line.BoundingBox[1].X)
-                        # // Max X / Max Y
-                        prevline.BoundingBox[2].X = max(prevline.BoundingBox[2].X, line.BoundingBox[2].X)
-                        prevline.BoundingBox[2].Y = max(prevline.BoundingBox[2].Y, line.BoundingBox[2].Y)
-                        # // Min X / Max Y
-                        prevline.BoundingBox[3].X = min(prevline.BoundingBox[3].X, line.BoundingBox[3].X)
-                        prevline.BoundingBox[3].Y = max(prevline.BoundingBox[3].Y, line.BoundingBox[3].Y)
-                    else:
-                        self.logger.info("Unknown alignment")
+                    prevline.BoundingBox[0] = self.__minXminY(0,prevline,line)
+                    prevline.BoundingBox[1] = self.__maxXminY(1,prevline,line)
+                    prevline.BoundingBox[2] = self.__maxXmaxY(2,prevline,line)
+                    prevline.BoundingBox[3] = self.__minXmaxY(3,prevline,line)
                 else:
                     prevline = line
 
