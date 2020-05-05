@@ -72,7 +72,7 @@ class BBOXNormalizedLine():
         self.BoundingBox = BoundingBox
         self.Text = Text
         self.merged = merged
-        self.XMedian=(self.BoundingBox[0].X + self.BoundingBox[1].X)/2
+        self.XMedian=(min(self.BoundingBox[0].X,self.BoundingBox[3].X) + max(self.BoundingBox[1].X,self.BoundingBox[2].X))/2
     @classmethod
     def from_json(cls, data):
         points = list()
@@ -232,13 +232,13 @@ class BBoxHelper():
             for line in layout.Lines:
                 if (line.Text.startswith(". ")):
                     line.BoundingBox[boxref].X = line.BoundingBox[boxref].X + self.ocrconfig.config[layout.Unit].ImageTextBoxingBulletListAdjustment
-            XSortedList = sorted([o for o in layout.Lines if o.merged == False],key= lambda o: o.BoundingBox[boxref].X)
+            XSortedList = sorted([o for o in layout.Lines if o.merged == False],key= lambda o: (o.BoundingBox[boxref].X,o.BoundingBox[boxref].Y))
         elif (alignment == RightAlignment):
             boxref = 1
             XSortedList = sorted([o for o in layout.Lines if o.merged == False],key= lambda o: o.BoundingBox[boxref].X,reverse=True)
         elif (alignment == CenteredAlignment):
             boxref = 1
-            XSortedList = sorted([o for o in layout.Lines if o.merged == False],key= lambda o: o.XMedian)
+            XSortedList = sorted([o for o in layout.Lines if o.merged == False],key= lambda o: (o.XMedian,o.BoundingBox[boxref].Y))
         else:
             self.logger.error("__processLineBoundingBoxes : Unknown text alignment")
 
@@ -259,7 +259,7 @@ class BBoxHelper():
             lowb=(regionx - (Xthresholdratio * self.ocrconfig.config[layout.Unit].ImageTextBoxingXThreshold))
             highb=(regionx + (Xthresholdratio * self.ocrconfig.config[layout.Unit].ImageTextBoxingXThreshold))
             if lowb>0.0:
-                self.logger.debug("Region Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(regionidx),str(regionx),str(lowb),str(xcurrent),str(highb),str((xcurrent >= lowb and xcurrent <= highb))))
+                self.logger.debug("{6}|Region Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(regionidx),str(regionx),str(lowb),str(xcurrent),str(highb),str((xcurrent >= lowb and xcurrent <= highb)),alignment))
 
             if (regionx == 0.0):
                 regions[regionidx].append(line)
@@ -276,7 +276,7 @@ class BBoxHelper():
                 regions[regionidx].append(line)
                 regionx = xcurrent
 
-        self.logger.debug("Found {} regions".format(len(regions)))
+        self.logger.debug("{1}|Found {0} regions".format(len(regions),alignment))
 
         # //Second Pass on the Y Axis 
         for lines in regions:
@@ -284,7 +284,7 @@ class BBoxHelper():
             # YSortedList = sorted(lines,key=lambda o : o.BoundingBox[boxref].Y)
             # // the entries are now sorted ascending their Y axis
             regiony = 0.0
-            self.logger.debug("** Region with {0} lines.".format(str(len(lines))))
+            self.logger.debug("{1}|Region with {0} lines.".format(str(len(lines)),alignment))
 
             for line in lines:
                 # //Top Left Y
@@ -292,7 +292,7 @@ class BBoxHelper():
                 # lowb=(regiony - (Ythresholdratio * self.ocrconfig.config[layout.Unit].ImageTextBoxingYThreshold))
                 lowb=regiony-(regiony*0.01)
                 highb=(regiony + (Ythresholdratio * self.ocrconfig.config[layout.Unit].ImageTextBoxingYThreshold))
-                self.logger.debug("Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.BoundingBox),str(line.Text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent <= highb)),str(line.XMedian)))
+                self.logger.debug("{7}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.BoundingBox),str(line.Text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent <= highb)),str(line.XMedian),alignment))
 
                 if (regiony == 0.0):
                     prevline = line
@@ -320,22 +320,28 @@ class BBoxHelper():
             layout=input_json
 
         inlines=[o for o in layout.Lines if o.merged == False]
-        self.logger.debug("Input # lines {}".format(len(inlines)))
+        self.logger.debug("{1}|Input # lines {0}".format(len(inlines),str(layout.Page)))
 
         for alignment in Alignments:
-            self.logger.debug("Processing {}".format(alignment))
+            self.logger.debug("{1}|Processing {0}".format(alignment,str(layout.Page)))
             layout.Lines = self.__processLineBoundingBoxes(layout,alignment)
 
         outlines=[o for o in layout.Lines if o.merged == False]
-        self.logger.debug("Output # lines {}".format(len(outlines)))
+        self.logger.debug("{1}|Output # lines {0}".format(len(outlines),str(layout.Page)))
+
+        # Based on the W/H ratio we set the sorting strategy
+        if layout.Width/layout.Height > 1.0:
+            YXSortedOutput=False
+        else: 
+            YXSortedOutput=True
 
         if (YXSortedOutput):
-            self.logger.debug("Sorting by YX")
+            self.logger.debug("{0}|Sorting by YX".format(str(layout.Page)))
             # //Sort the new boxes by Y then X and output the text out of it
             XSortedList = sorted(outlines,key= lambda o: (o.BoundingBox[0].Y, o.XMedian))
             # XSortedList = sorted(outlines,key= lambda o: (o.BoundingBox[0].Y, o.BoundingBox[0].X))
         else:
-            self.logger.debug("Sorting by XY")
+            self.logger.debug("{0}|Sorting by XY".format(str(layout.Page)))
             XSortedList = sorted(outlines,key= lambda o: (o.BoundingBox[0].X, o.BoundingBox[0].Y))
 
         # Output

@@ -26,7 +26,7 @@ class BBoxImageHelper():
         super().__init__()
         log_file_path = path.join(path.dirname(path.abspath(__file__)), 'logging.conf')
         logging.config.fileConfig(log_file_path)
-        self.logger = logging.getLogger('bboximage')  # get a logger
+        self.logger = logging.getLogger('bboxhelper')  # get a logger
 
     def save_boxed_image(self,image,fileout):
         if fileout:

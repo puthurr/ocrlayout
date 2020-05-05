@@ -14,7 +14,7 @@
           "Ythresholdratio": 1.2
         },
         "CenteredAlignment": {
-          "Xthresholdratio": 1.5,
+          "Xthresholdratio": 1.0,
           "Ythresholdratio": 1.2
         }
       }
@@ -33,7 +33,7 @@
           "Ythresholdratio": 1.0
         },
         "CenteredAlignment": {
-          "Xthresholdratio": 1.6,
+          "Xthresholdratio": 1.0,
           "Ythresholdratio": 1.0
         }
       }
