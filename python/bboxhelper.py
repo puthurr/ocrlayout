@@ -93,9 +93,27 @@ class BBOXNormalizedLine():
         else:
             points = list(map(BBOXPoint.from_json, array))
         return cls(BoundingBox=points,Text=data['text'])
+    @classmethod
+    def from_google(cls, block):
+        points = list()
+        for bb in block.bounding_box.vertices:
+            points.append(BBOXPoint(bb.x,bb.y))
+        # Text of the block
+        block_text=""
+        for paragraph in block.paragraphs:
+            for word in paragraph.words:
+                for symbol in word.symbols:
+                    block_text+=symbol.text
+                    if symbol.property.detected_break:
+                        if symbol.property.detected_break.type in [1,2,3]:
+                            block_text+=" "
+                        elif symbol.property.detected_break.type==5:
+                            block_text+=os.linesep
+                            # EOL_SURE_SPACE
+        return cls(BoundingBox=points,Text=block_text)
 
 class BBOXPageLayout():
-    def __init__(self, Page:int = 0,ClockwiseOrientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "Pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None):
+    def __init__(self, Page:int = 0,ClockwiseOrientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None):
         self.Page=Page
         self.ClockwiseOrientation=ClockwiseOrientation
         self.Width=Width
@@ -108,16 +126,26 @@ class BBOXPageLayout():
     def from_json(cls, data):
         lines = list(map(BBOXNormalizedLine.from_json, data["lines"]))
         return cls(Page=data["page"],ClockwiseOrientation=data["clockwiseOrientation"],Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
+    @classmethod
+    def from_google(cls, page):
+        lines = list(map(BBOXNormalizedLine.from_google, page.blocks))
+        # return cls(Page=1,Width=page.width,Height=page.height,Language=page.property.detectedLanguages[0].languageCode,Lines=lines)
+        return cls(Page=1,Width=page.width,Height=page.height,Lines=lines)
 
 class BBOXOCRResponse():
-    def __init__(self,status:str = None,Text:str=None,recognitionResults:List[BBOXPageLayout]=None):
+    def __init__(self,status:str = None,Text:str=None,original_text:str=None,recognitionResults:List[BBOXPageLayout]=None):
         self.status =status
+        self.original_text=original_text
         self.Text=Text
         self.recognitionResults=recognitionResults
     @classmethod
     def from_json(cls, data):
         pages = list(map(BBOXPageLayout.from_json, data["recognitionResults"]))
         return cls(status=data["status"],recognitionResults=pages)
+    @classmethod
+    def from_google(cls, document):
+        pages = list(map(BBOXPageLayout.from_google,document.pages))
+        return cls(status="success",original_text=document.text,recognitionResults=pages)
 
 # Constants
 LeftAlignment="LeftAlignment"
@@ -175,7 +203,11 @@ class BBoxHelper():
 
     def processOCRResponse(self, input_json, YXSortedOutput:bool = False, boxSeparator:str = None):
         #load the input json into a response object
-        response=BBOXOCRResponse.from_json(json.loads(input_json))
+        if isinstance(input_json,str):
+            response=BBOXOCRResponse.from_json(json.loads(input_json))
+        elif isinstance(input_json,BBOXOCRResponse):
+            response=input_json
+
         newtext = ""
         # Rotate the BBox of each page based on its corresponding orientation
         for item in response.recognitionResults:
@@ -313,7 +345,6 @@ class BBoxHelper():
         return XSortedList
 
     def processOCRPageLayout(self, input_json, YXSortedOutput:bool = False, boxSeparator:str = None):
-
         if isinstance(input_json,str):
             layout=BBOXPageLayout.from_json(json.loads(input_json))
         elif isinstance(input_json,BBOXPageLayout):
