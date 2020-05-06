@@ -73,6 +73,7 @@ class BBOXNormalizedLine():
         self.Text = Text
         self.merged = merged
         self.XMedian=(min(self.BoundingBox[0].X,self.BoundingBox[3].X) + max(self.BoundingBox[1].X,self.BoundingBox[2].X))/2
+        self.YMedian=(min(self.BoundingBox[0].Y,self.BoundingBox[3].Y) + max(self.BoundingBox[1].Y,self.BoundingBox[2].Y))/2
     @classmethod
     def from_json(cls, data):
         points = list()
@@ -361,19 +362,19 @@ class BBoxHelper():
         self.logger.debug("{1}|Output # lines {0}".format(len(outlines),str(layout.Page)))
 
         # Based on the W/H ratio we set the sorting strategy
-        if layout.Width/layout.Height > 1.0:
-            YXSortedOutput=False
-        else: 
-            YXSortedOutput=True
+        # if layout.Width/layout.Height > 1.0:
+        #     YXSortedOutput=False
+        # else: 
+        #     YXSortedOutput=True
 
         if (YXSortedOutput):
             self.logger.debug("{0}|Sorting by YX".format(str(layout.Page)))
             # //Sort the new boxes by Y then X and output the text out of it
-            XSortedList = sorted(outlines,key= lambda o: (o.BoundingBox[0].Y, o.XMedian))
+            XSortedList = sorted(outlines,key= lambda o: (o.YMedian, o.XMedian))
             # XSortedList = sorted(outlines,key= lambda o: (o.BoundingBox[0].Y, o.BoundingBox[0].X))
         else:
             self.logger.debug("{0}|Sorting by XY".format(str(layout.Page)))
-            XSortedList = sorted(outlines,key= lambda o: (o.BoundingBox[0].X, o.BoundingBox[0].Y))
+            XSortedList = sorted(outlines,key= lambda o: (o.XMedian, o.YMedian))
 
         # Output
         newtext = ""

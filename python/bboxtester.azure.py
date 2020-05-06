@@ -71,7 +71,7 @@ def batch_read_file_in_stream(subscription_key):
                     outfile.write(line.text)
                     outfile.write('\n')
 
-        bboxresponse=BBoxHelper().processOCRResponse(image_analysis.response.content.decode("utf-8"),YXSortedOutput=False)
+        bboxresponse=BBoxHelper().processOCRResponse(image_analysis.response.content.decode("utf-8"),YXSortedOutput=True)
         print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
         # Write the improved ocr response
