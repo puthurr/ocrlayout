@@ -1,6 +1,6 @@
 # OcrLayout Project
 
-Provides the ability to get more meaninful text out of OCR outputs. It manipulates the Bounding Boxes of lines or words. 
+Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of lines or words. 
 
 ## boboxhelper 
 

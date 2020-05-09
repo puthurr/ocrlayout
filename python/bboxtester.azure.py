@@ -84,7 +84,7 @@ def batch_read_file_in_stream(subscription_key):
         # Create the Before and After images
         imagefn=os.path.join(IMAGES_FOLDER, filename)
         image = Image.open(imagefn)
-        response=BBOXOCRResponse.from_json(json.loads(image_analysis.response.content.decode("utf-8")))
+        response=BBOXOCRResponse.from_azure(json.loads(image_analysis.response.content.decode("utf-8")))
         draw_boxes(image, response, 'red')
         draw_boxes(image, bboxresponse, 'black',padding=1)
         save_boxed_image(image,os.path.join(RESULTS_FOLDER, "azure."+filename))

@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 tests-results/
-*.log
+*.log"site/" 

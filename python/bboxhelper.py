@@ -64,7 +64,7 @@ class BBOXPoint():
     def __repr__(self):
         return "[{0},{1}]".format(str(self.X),str(self.Y))
     @classmethod
-    def from_json(cls, data):
+    def from_azure(cls, data):
         return cls(**data)
 
 class BBOXNormalizedLine():
@@ -75,7 +75,7 @@ class BBOXNormalizedLine():
         self.XMedian=(min(self.BoundingBox[0].X,self.BoundingBox[3].X) + max(self.BoundingBox[1].X,self.BoundingBox[2].X))/2
         self.YMedian=(min(self.BoundingBox[0].Y,self.BoundingBox[3].Y) + max(self.BoundingBox[1].Y,self.BoundingBox[2].Y))/2
     @classmethod
-    def from_json(cls, data):
+    def from_azure(cls, data):
         points = list()
         array=data["boundingBox"]
         if ( len(array) > 4 ):
@@ -92,7 +92,7 @@ class BBOXNormalizedLine():
             y = array[7]
             points.append(BBOXPoint(x, y))
         else:
-            points = list(map(BBOXPoint.from_json, array))
+            points = list(map(BBOXPoint.from_azure, array))
         return cls(BoundingBox=points,Text=data['text'])
     @classmethod
     def from_google(cls, block):
@@ -124,8 +124,8 @@ class BBOXPageLayout():
         self.Text=Text
         self.Lines=Lines
     @classmethod
-    def from_json(cls, data):
-        lines = list(map(BBOXNormalizedLine.from_json, data["lines"]))
+    def from_azure(cls, data):
+        lines = list(map(BBOXNormalizedLine.from_azure, data["lines"]))
         return cls(Page=data["page"],ClockwiseOrientation=data["clockwiseOrientation"],Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
     @classmethod
     def from_google(cls, page):
@@ -140,8 +140,8 @@ class BBOXOCRResponse():
         self.Text=Text
         self.recognitionResults=recognitionResults
     @classmethod
-    def from_json(cls, data):
-        pages = list(map(BBOXPageLayout.from_json, data["recognitionResults"]))
+    def from_azure(cls, data):
+        pages = list(map(BBOXPageLayout.from_azure, data["recognitionResults"]))
         return cls(status=data["status"],recognitionResults=pages)
     @classmethod
     def from_google(cls, document):
@@ -205,7 +205,7 @@ class BBoxHelper():
     def processOCRResponse(self, input_json, YXSortedOutput:bool = False, boxSeparator:str = None):
         #load the input json into a response object
         if isinstance(input_json,str):
-            response=BBOXOCRResponse.from_json(json.loads(input_json))
+            response=BBOXOCRResponse.from_azure(json.loads(input_json))
         elif isinstance(input_json,BBOXOCRResponse):
             response=input_json
 
@@ -347,7 +347,7 @@ class BBoxHelper():
 
     def processOCRPageLayout(self, input_json, YXSortedOutput:bool = False, boxSeparator:str = None):
         if isinstance(input_json,str):
-            layout=BBOXPageLayout.from_json(json.loads(input_json))
+            layout=BBOXPageLayout.from_azure(json.loads(input_json))
         elif isinstance(input_json,BBOXPageLayout):
             layout=input_json
 
