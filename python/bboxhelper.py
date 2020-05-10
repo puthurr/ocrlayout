@@ -109,7 +109,7 @@ class BBOXNormalizedLine():
                         if symbol.property.detected_break.type in [1,2,3]:
                             block_text+=" "
                         elif symbol.property.detected_break.type==5:
-                            block_text+=os.linesep
+                            block_text+='\r\n'
                             # EOL_SURE_SPACE
         return cls(BoundingBox=points,Text=block_text)
 
@@ -233,7 +233,8 @@ class BBoxHelper():
                 self.logger.info("TODO rotation adjustment required ? ")
 
             newtext += self.processOCRPageLayout(item, YXSortedOutput, boxSeparator).Text
-            newtext += os.linesep
+            # TODO add support for page separator
+            # newtext += '\r\n'
 
         response.Text = str(newtext)
         return response
@@ -361,6 +362,7 @@ class BBoxHelper():
         outlines=[o for o in layout.Lines if o.merged == False]
         self.logger.debug("{1}|Output # lines {0}".format(len(outlines),str(layout.Page)))
 
+        # Sorting Strategy 
         # Based on the W/H ratio we set the sorting strategy
         # if layout.Width/layout.Height > 1.0:
         #     YXSortedOutput=False
@@ -379,11 +381,13 @@ class BBoxHelper():
         # Output
         newtext = ""
         for line in XSortedList:
+            # Normalized to Rectangles? 
             newtext+=line.Text
             if (boxSeparator):
                 newtext+=boxSeparator 
             else:
-                newtext+=os.linesep
+                # newtext+=os.linesep
+                newtext+='\r\n'
 
         # // Setting the new Normalized Lines we created.
         layout.Lines = XSortedList

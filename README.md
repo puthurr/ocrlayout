@@ -2,7 +2,7 @@
 
 Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of lines or words. 
 
-## boboxhelper 
+## bboxhelper 
 
 While OCR processing images containing lots of textual information, it might be relevant to assemble the generated text into meaninful sentences or paragraphs.
 

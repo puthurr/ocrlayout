@@ -30,7 +30,7 @@ def save_boxed_image(image,fileout):
     else:
         image.show()
 
-def draw_boxes(image, bounds, color, padding=0):
+def draw_gboxes(image, bounds, color, padding=0):
     """Draw a border around the image using the hints in the vector list."""
     draw = ImageDraw.Draw(image)
 
@@ -42,15 +42,34 @@ def draw_boxes(image, bounds, color, padding=0):
             bound.vertices[3].x+padding, bound.vertices[3].y+padding], None, color)
     return image
 
+def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
+    """Draw a border around the image using the hints in the vector list."""
+    draw = ImageDraw.Draw(image)
+    for page in ocrresponse.recognitionResults:
+        for bound in page.Lines:
+            draw.polygon([
+                bound.BoundingBox[0].X+padding, bound.BoundingBox[0].Y+padding,
+                bound.BoundingBox[1].X+padding, bound.BoundingBox[1].Y+padding,
+                bound.BoundingBox[2].X+padding, bound.BoundingBox[2].Y+padding,
+                bound.BoundingBox[3].X+padding, bound.BoundingBox[3].Y+padding], 
+                outline=color)
+    return image
 
-def google_document_text_detection():
+
+def google_document_text_detection(filter:None):
     """Google document text detection. 
     This will recognize text of the given image using the Google Vision API.
     """
     import time
 
     for filename in os.listdir(IMAGES_FOLDER):
+
+        if filter:
+            if filter not in filename:
+                continue 
+
         print("Image Name {}".format(filename))
+        (imgname,imgext) = os.path.splitext(filename)
 
         # Instantiates a Google Vision client
         client = vision.ImageAnnotatorClient()
@@ -68,16 +87,16 @@ def google_document_text_detection():
         # with open(os.path.join(RESULTS_FOLDER, filename+".azcv.batch_read.json"), 'w') as outfile:
         #     outfile.write(image_analysis.response.content.decode("utf-8"))
 
-        with open(os.path.join(RESULTS_FOLDER, filename+".gocv.vision.text.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".gocv.vision.text.json"), 'w') as outfile:
             outfile.write(document.text)
 
         # Create BBOX OCR Response from Google's response object
         ocrresponse=BBOXOCRResponse.from_google(document)
         bboxresponse=BBoxHelper().processOCRResponse(ocrresponse,YXSortedOutput=False)
 
-        with open(os.path.join(RESULTS_FOLDER, filename+".gocv.bbox.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".gocv.bbox.json"), 'w') as outfile:
             outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
-        with open(os.path.join(RESULTS_FOLDER, filename+".gocv.bbox.text.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".gocv.bbox.text.json"), 'w') as outfile:
             outfile.write(bboxresponse.Text)
 
         bounds=[[],[],[],[],[],[]]
@@ -92,16 +111,20 @@ def google_document_text_detection():
                 bounds[FeatureType.BLOCK.value].append(block.bounding_box)
 
         image = Image.open(os.path.join(IMAGES_FOLDER, filename))
+        bboximg = image.copy()
 
         # draw_boxes(image, bounds[FeatureType.SYMBOL.value], 'black')
-        draw_boxes(image, bounds[FeatureType.WORD.value], 'yellow')
-        draw_boxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
-        draw_boxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)
+        draw_gboxes(image, bounds[FeatureType.WORD.value], 'yellow')
+        draw_gboxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
+        draw_gboxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)       
+        image.save(os.path.join(RESULTS_FOLDER, imgname+".google"+imgext))
         
-        image.save(os.path.join(RESULTS_FOLDER, "google."+filename))
+        # Write the BBOX resulted image 
+        draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
+        save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".google.bbox"+imgext))
 
 
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    google_document_text_detection()
+    google_document_text_detection("2020")
