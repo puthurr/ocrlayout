@@ -1,4 +1,5 @@
 {
+  "rectangleNormalization":true,
   "config": {
     "pixel": {
       "ImageTextBoxingXThreshold": 6.0,

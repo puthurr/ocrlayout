@@ -2,20 +2,22 @@
 import io
 import json
 import logging
+import logging.config
+import math
 import os
 import random
 import re
 import time
 import uuid
 from datetime import datetime
+from os import path
 from pathlib import Path
 from typing import List
-import json
-import math
+
 import requests
-import logging
-import logging.config
-from os import path
+
+from bboxutils import BBoxUtils
+
 #
 # Bounding Boxes Config Classes
 #
@@ -42,15 +44,16 @@ class BBOXConfigEntry():
         return cls(data["ImageTextBoxingXThreshold"],data["ImageTextBoxingYThreshold"],data["ImageTextBoxingBulletListAdjustment"],obj)
 
 class BBOXConfig():
-    def __init__(self,config={}):
+    def __init__(self,rectangleNormalization,config={}):
         self.config=config
+        self.rectangleNormalization=rectangleNormalization
     @classmethod
     def from_json(cls, data):
         ocfg={}
         cfgs=data["config"]
         for key in cfgs:
             ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
-        return cls(config=ocfg)
+        return cls(data["rectangleNormalization"],config=ocfg)
 #
 # Bounding Boxes OCR Classes
 #
@@ -70,10 +73,27 @@ class BBOXPoint():
 class BBOXNormalizedLine():
     def __init__(self, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False):
         self.BoundingBox = BoundingBox
-        self.Text = Text
+        self.Text = ''
         self.merged = merged
         self.XMedian=(min(self.BoundingBox[0].X,self.BoundingBox[3].X) + max(self.BoundingBox[1].X,self.BoundingBox[2].X))/2
         self.YMedian=(min(self.BoundingBox[0].Y,self.BoundingBox[3].Y) + max(self.BoundingBox[1].Y,self.BoundingBox[2].Y))/2
+        self.__appendText(Text)
+
+    def __appendText(self, Text):
+        self.Text += Text
+        if Text.endswith('.'):
+            self.EndSentence=True
+        else:
+            self.EndSentence=False
+
+    def appendLine(self,line):
+        line.merged = True
+        self.__appendText(" " + line.Text)
+        self.BoundingBox[0] = BBoxUtils.minXminY(0,self,line)
+        self.BoundingBox[1] = BBoxUtils.maxXminY(1,self,line)
+        self.BoundingBox[2] = BBoxUtils.maxXmaxY(2,self,line)
+        self.BoundingBox[3] = BBoxUtils.minXmaxY(3,self,line)
+        
     @classmethod
     def from_azure(cls, data):
         points = list()
@@ -166,42 +186,6 @@ class BBoxHelper():
         logging.config.fileConfig(log_file_path)
         self.logger = logging.getLogger('bboxhelper')  # get a logger
 
-    def __rotateBoundingBox(self,Width:float,Height:float,boundingBox:List[BBOXPoint],rotationv:int):
-        newboundary = list()
-        if (rotationv == 90):
-            newboundary.append(boundingBox[0].inv())
-            newboundary.append(boundingBox[1].inv())
-            newboundary.append(boundingBox[2].inv())
-            newboundary.append(boundingBox[3].inv())
-            # //Adjusting the Y axis
-            newboundary[0].Y = Width - boundingBox[0].X
-            newboundary[1].Y = Width - boundingBox[1].X
-            newboundary[2].Y = Width - boundingBox[2].X
-            newboundary[3].Y = Width - boundingBox[3].X
-        elif (rotationv == -90):
-            newboundary.append(boundingBox[0].inv())
-            newboundary.append(boundingBox[1].inv())
-            newboundary.append(boundingBox[2].inv())
-            newboundary.append(boundingBox[3].inv())
-            # //Adjusting the X axis 
-            newboundary[0].X = Height - boundingBox[1].Y
-            newboundary[1].X = Height - boundingBox[0].Y
-            newboundary[2].X = Height - boundingBox[3].Y
-            newboundary[3].X = Height - boundingBox[2].Y
-        elif (rotationv == 180):
-            newboundary.append(boundingBox[1])
-            newboundary.append(boundingBox[0])
-            newboundary.append(boundingBox[3])
-            newboundary.append(boundingBox[2])
-            # //Adjust the Y axis 
-            newboundary[0].Y = Height - boundingBox[1].Y
-            newboundary[1].Y = Height - boundingBox[0].Y
-            newboundary[2].Y = Height - boundingBox[3].Y
-            newboundary[3].Y = Height - boundingBox[2].Y
-        else:
-            newboundary.append(boundingBox)
-        return newboundary
-
     def processOCRResponse(self, input_json, YXSortedOutput:bool = False, boxSeparator:str = None):
         #load the input json into a response object
         if isinstance(input_json,str):
@@ -215,20 +199,21 @@ class BBoxHelper():
             self.logger.debug("Processing Page {}".format(str(item.Page)))
             rotation = round(item.ClockwiseOrientation,0)
             self.logger.debug("Orientation {}".format(str(rotation)))
+            # TODO Do the Math for clockwise orientation
             if (rotation >= 360-1 or rotation == 0):
                 self.logger.debug("no rotation adjustment required")
             elif (rotation >= 270-1):
                 # //Rotate 90 clockwise
                 for x in item.Lines:
-                    x.BoundingBox=self.__rotateBoundingBox(item.Width, item.Height, x.BoundingBox, -90)
+                    x.BoundingBox = BBoxUtils.rotateBoundingBox(item.Width, item.Height, x.BoundingBox, -90)
             elif (rotation >= 180-1):
                 # // Rotate 180
                 for x in item.Lines:
-                    x.BoundingBox = self.__rotateBoundingBox(item.Width, item.Height, x.BoundingBox, 180)
+                    x.BoundingBox = BBoxUtils.rotateBoundingBox(item.Width, item.Height, x.BoundingBox, 180)
             elif (rotation >= 90-1):
                 # //Rotate 90 counterclockwise
                 for x in item.Lines:
-                    x.BoundingBox = self.__rotateBoundingBox(item.Width, item.Height, x.BoundingBox, 90)
+                    x.BoundingBox = BBoxUtils.rotateBoundingBox(item.Width, item.Height, x.BoundingBox, 90)
             else:
                 self.logger.info("TODO rotation adjustment required ? ")
 
@@ -238,23 +223,6 @@ class BBoxHelper():
 
         response.Text = str(newtext)
         return response
-
-    def __minXminY(self,index,prevline,line): 
-        prevline.BoundingBox[index].X = min(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
-        prevline.BoundingBox[index].Y = min(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
-        return prevline.BoundingBox[index]
-    def __minXmaxY(self,index,prevline,line): 
-        prevline.BoundingBox[index].X = min(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
-        prevline.BoundingBox[index].Y = max(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
-        return prevline.BoundingBox[index]
-    def __maxXminY(self,index,prevline,line):
-        prevline.BoundingBox[index].X = max(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
-        prevline.BoundingBox[index].Y = min(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
-        return prevline.BoundingBox[index]
-    def __maxXmaxY(self,index,prevline,line): 
-        prevline.BoundingBox[index].X = max(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
-        prevline.BoundingBox[index].Y = max(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
-        return prevline.BoundingBox[index]
 
     def __processLineBoundingBoxes(self, layout:BBOXPageLayout, alignment:str): 
         boxref = 0
@@ -331,14 +299,7 @@ class BBoxHelper():
                 if (regiony == 0.0):
                     prevline = line
                 elif (ycurrent >= lowb and ycurrent <= highb):
-                    line.merged = True
-                    # //Merge current box with previous 
-                    prevline.Text += " " + line.Text;
-                    # //Merge the BoundingBox coordinates
-                    prevline.BoundingBox[0] = self.__minXminY(0,prevline,line)
-                    prevline.BoundingBox[1] = self.__maxXminY(1,prevline,line)
-                    prevline.BoundingBox[2] = self.__maxXmaxY(2,prevline,line)
-                    prevline.BoundingBox[3] = self.__minXmaxY(3,prevline,line)
+                    prevline.appendLine(line)
                 else:
                     prevline = line
 
@@ -382,6 +343,8 @@ class BBoxHelper():
         newtext = ""
         for line in XSortedList:
             # Normalized to Rectangles? 
+            if self.ocrconfig.rectangleNormalization:
+                BBoxUtils.makeRectangle(line)
             newtext+=line.Text
             if (boxSeparator):
                 newtext+=boxSeparator 
