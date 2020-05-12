@@ -45,9 +45,10 @@ class BBOXConfigEntry():
         return cls(data["ImageTextBoxingXThreshold"],data["ImageTextBoxingYThreshold"],data["ImageTextBoxingBulletListAdjustment"],obj)
 
 class BBOXConfig():
-    def __init__(self,rectangleNormalization,blockTag:None,paragraphTag:None,sentenceTag:None,config={}):
+    def __init__(self,rectangleNormalization,pageTag:None,blockTag:None,paragraphTag:None,sentenceTag:None,config={}):
         self.config=config
         self.rectangleNormalization=rectangleNormalization
+        self.pageTag = pageTag
         self.blockTag = blockTag
         self.paragraphTag = paragraphTag
         self.sentenceTag = sentenceTag
@@ -57,7 +58,7 @@ class BBOXConfig():
         cfgs=data["config"]
         for key in cfgs:
             ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
-        return cls(rectangleNormalization=data["rectangleNormalization"],blockTag=data["blockTag"],paragraphTag=data["paragraphTag"],sentenceTag=data["sentenceTag"],config=ocfg)
+        return cls(rectangleNormalization=data["rectangleNormalization"],pageTag=data["pageTag"],blockTag=data["blockTag"],paragraphTag=data["paragraphTag"],sentenceTag=data["sentenceTag"],config=ocfg)
 #
 # Bounding Boxes OCR Classes
 #
@@ -208,10 +209,12 @@ class BBoxHelper():
         elif isinstance(input_json,BBOXOCRResponse):
             response=input_json
 
-        newtext = ""
+        newtext = ""        
         # Rotate the BBox of each page based on its corresponding orientation
         for item in response.pages:
             self.logger.debug("Processing Page {}".format(str(item.Page)))
+            if self.ocrconfig.pageTag:
+                newtext+=self.ocrconfig.pageTag[0]
             rotation = round(item.ClockwiseOrientation,0)
             self.logger.debug("Orientation {}".format(str(rotation)))
             # TODO Do the Math for clockwise orientation
@@ -233,8 +236,12 @@ class BBoxHelper():
                 self.logger.info("TODO rotation adjustment required ? ")
 
             newtext += self.processOCRPageLayout(item, YXSortedOutput, boxSeparator).Text
-            # TODO add support for page separator
-            # newtext += '\r\n'
+
+            if self.ocrconfig.pageTag:
+                newtext+=self.ocrconfig.pageTag[1]
+            else:
+                # Default page separator
+                newtext += '\r\n'
 
         response.Text = str(newtext)
         return response
@@ -380,3 +387,5 @@ class BBoxHelper():
         # // Updating the Text after our processing.
         layout.Text = newtext
         return layout
+
+

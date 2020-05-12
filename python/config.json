@@ -1,5 +1,6 @@
 {
   "rectangleNormalization":true,
+  "pageTag":["<div>","</div>"],
   "blockTag":["<div>","</div>"],
   "paragraphTag":["<p>","</p>"],
   "sentenceTag":["<span>","</span>"],
