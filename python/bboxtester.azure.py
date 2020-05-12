@@ -25,7 +25,7 @@ def save_boxed_image(image,fileout):
 def draw_boxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
     """Draw a border around the image using the hints in the vector list."""
     draw = ImageDraw.Draw(image)
-    for page in ocrresponse.recognitionResults:
+    for page in ocrresponse.pages:
         for bound in page.Lines:
             draw.polygon([
                 bound.BoundingBox[0].X+padding, bound.BoundingBox[0].Y+padding,
@@ -100,6 +100,6 @@ def batch_read_file_in_stream(filter:None):
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    batch_read_file_in_stream("2020")
+    batch_read_file_in_stream("scan2")
     # from tools import execute_samples
     # execute_samples(globals(), SUBSCRIPTION_KEY_ENV_NAME)

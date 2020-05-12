@@ -1,5 +1,8 @@
 {
   "rectangleNormalization":true,
+  "blockTag":["<div>","</div>"],
+  "paragraphTag":["<p>","</p>"],
+  "sentenceTag":["<span>","</span>"],
   "config": {
     "pixel": {
       "ImageTextBoxingXThreshold": 6.0,

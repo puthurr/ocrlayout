@@ -45,7 +45,7 @@ def draw_gboxes(image, bounds, color, padding=0):
 def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
     """Draw a border around the image using the hints in the vector list."""
     draw = ImageDraw.Draw(image)
-    for page in ocrresponse.recognitionResults:
+    for page in ocrresponse.pages:
         for bound in page.Lines:
             draw.polygon([
                 bound.BoundingBox[0].X+padding, bound.BoundingBox[0].Y+padding,
@@ -127,4 +127,4 @@ def google_document_text_detection(filter:None):
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    google_document_text_detection("2020")
+    google_document_text_detection("scan2")

@@ -13,6 +13,7 @@ from datetime import datetime
 from os import path
 from pathlib import Path
 from typing import List
+import numpy as np
 
 import requests
 
@@ -44,16 +45,19 @@ class BBOXConfigEntry():
         return cls(data["ImageTextBoxingXThreshold"],data["ImageTextBoxingYThreshold"],data["ImageTextBoxingBulletListAdjustment"],obj)
 
 class BBOXConfig():
-    def __init__(self,rectangleNormalization,config={}):
+    def __init__(self,rectangleNormalization,blockTag:None,paragraphTag:None,sentenceTag:None,config={}):
         self.config=config
         self.rectangleNormalization=rectangleNormalization
+        self.blockTag = blockTag
+        self.paragraphTag = paragraphTag
+        self.sentenceTag = sentenceTag
     @classmethod
     def from_json(cls, data):
         ocfg={}
         cfgs=data["config"]
         for key in cfgs:
             ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
-        return cls(data["rectangleNormalization"],config=ocfg)
+        return cls(rectangleNormalization=data["rectangleNormalization"],blockTag=data["blockTag"],paragraphTag=data["paragraphTag"],sentenceTag=data["sentenceTag"],config=ocfg)
 #
 # Bounding Boxes OCR Classes
 #
@@ -71,13 +75,16 @@ class BBOXPoint():
         return cls(**data)
 
 class BBOXNormalizedLine():
-    def __init__(self, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False):
+    def __init__(self, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avgheight=0.0, stdheight=0.0):
         self.BoundingBox = BoundingBox
         self.Text = ''
         self.merged = merged
         self.XMedian=(min(self.BoundingBox[0].X,self.BoundingBox[3].X) + max(self.BoundingBox[1].X,self.BoundingBox[2].X))/2
         self.YMedian=(min(self.BoundingBox[0].Y,self.BoundingBox[3].Y) + max(self.BoundingBox[1].Y,self.BoundingBox[2].Y))/2
         self.__appendText(Text)
+        self.avgheight = avgheight
+        self.stdheight = stdheight
+
 
     def __appendText(self, Text):
         self.Text += Text
@@ -113,7 +120,15 @@ class BBOXNormalizedLine():
             points.append(BBOXPoint(x, y))
         else:
             points = list(map(BBOXPoint.from_azure, array))
-        return cls(BoundingBox=points,Text=data['text'])
+        wordheights=[]
+        # Check Line in anomaly
+        for wordbox in data['words']:
+            wordheights.append(wordbox['boundingBox'][5]-wordbox['boundingBox'][1])
+        # calculate the average 
+        npheights = np.array(wordheights)
+        avgheight = np.average(npheights)
+        stdheight = np.std(npheights, dtype=np.float64)
+        return cls(BoundingBox=points,Text=data['text'],stdheight=stdheight,avgheight=avgheight)
     @classmethod
     def from_google(cls, block):
         points = list()
@@ -157,8 +172,8 @@ class BBOXOCRResponse():
     def __init__(self,status:str = None,Text:str=None,original_text:str=None,recognitionResults:List[BBOXPageLayout]=None):
         self.status =status
         self.original_text=original_text
-        self.Text=Text
-        self.recognitionResults=recognitionResults
+        self.text=Text
+        self.pages=recognitionResults
     @classmethod
     def from_azure(cls, data):
         pages = list(map(BBOXPageLayout.from_azure, data["recognitionResults"]))
@@ -195,7 +210,7 @@ class BBoxHelper():
 
         newtext = ""
         # Rotate the BBox of each page based on its corresponding orientation
-        for item in response.recognitionResults:
+        for item in response.pages:
             self.logger.debug("Processing Page {}".format(str(item.Page)))
             rotation = round(item.ClockwiseOrientation,0)
             self.logger.debug("Orientation {}".format(str(rotation)))
@@ -325,10 +340,10 @@ class BBoxHelper():
 
         # Sorting Strategy 
         # Based on the W/H ratio we set the sorting strategy
-        # if layout.Width/layout.Height > 1.0:
-        #     YXSortedOutput=False
-        # else: 
-        #     YXSortedOutput=True
+        if layout.Width/layout.Height > 1.0:
+            YXSortedOutput=False
+        else: 
+            YXSortedOutput=True
 
         if (YXSortedOutput):
             self.logger.debug("{0}|Sorting by YX".format(str(layout.Page)))
@@ -342,15 +357,23 @@ class BBoxHelper():
         # Output
         newtext = ""
         for line in XSortedList:
+            if boxSeparator is None:
+                if self.ocrconfig.blockTag:
+                    newtext+=self.ocrconfig.blockTag[0]
+            else:
+                newtext+=boxSeparator[0]
             # Normalized to Rectangles? 
             if self.ocrconfig.rectangleNormalization:
                 BBoxUtils.makeRectangle(line)
             newtext+=line.Text
-            if (boxSeparator):
-                newtext+=boxSeparator 
+            if boxSeparator is None:
+                if self.ocrconfig.blockTag:
+                    newtext+=self.ocrconfig.blockTag[1]
+                else:
+                    # newtext+=os.linesep
+                    newtext+='\r\n'
             else:
-                # newtext+=os.linesep
-                newtext+='\r\n'
+                newtext+=boxSeparator[1]
 
         # // Setting the new Normalized Lines we created.
         layout.Lines = XSortedList
