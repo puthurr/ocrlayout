@@ -33,10 +33,10 @@ Depending on your preferred OCR service Microsoft Azure or Google,
 
 ### Microsoft Azure 
 Set the below environment variables in your env. The ComputerVision location refers to the region you have registered your Azure Computer Vision service. You only need th region there. 
-'''
+```
 SUBSCRIPTION_KEY_ENV_NAME = os.environ.get("COMPUTERVISION_SUBSCRIPTION_KEY", None)
 COMPUTERVISION_LOCATION = os.environ.get("COMPUTERVISION_LOCATION", "westeurope")
-'''
+```
 
 ### Google 
 Set the below environment variables. The ComputerVision location refers to the region you have registered your Azure Computer Vision service. You only need th region there. 
@@ -51,24 +51,22 @@ Under the project python directory,
 - execute the *bboxtester.azure.py* for testing with Microsoft Azure Computer Vision OCR. 
 - execute the *bboxtester.google.py* for testing with Google Computer Vision OCR. 
 
-
 Each sample script will
-process all images located under the images script (one level of the python dir), 
-call the corresponding OCR service, 
-persist the raw ocr response on disk in the tests-results or the directory of your choice
-persiste the original image with the bouding boxes of the raw OCR response
-call on the BBOx Helper
-persist the original image with the bouding boxes of the BBoxHelper OCR response
-
+- process all images located under the images script (one level of the python dir), 
+- call the corresponding OCR service, 
+- persist the raw ocr response on disk in the tests-results or the directory of your choice
+- persist the original image with the bouding boxes of the raw OCR response
+- call on the BBOx Helper
+- persist the original image with the bouding boxes of the BBoxHelper OCR response
 
 #### Changing the input and output directories
-'''
+```
 IMAGES_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../images")
 
 RESULTS_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../tests-results")
-'''
+```
 
 
 ### References
@@ -89,7 +87,7 @@ https://github.com/tmbdev/hocr-tools
 
 ### Annotated Images
 
-'''
+```
 def draw_boxes(image, bounds, color):
     """Draw a border around the image using the hints in the vector list."""
     draw = ImageDraw.Draw(image)
@@ -101,7 +99,7 @@ def draw_boxes(image, bounds, color):
             bound.vertices[2].x, bound.vertices[2].y,
             bound.vertices[3].x, bound.vertices[3].y], None, color)
     return image
-'''
+```
 
 ### Limitations 
 
@@ -109,5 +107,5 @@ The bboxhelper doesn't output Words levels as its goal is to build sentences and
 
 ## Upcoming improvements
 
-* Output in hOCR https://en.wikipedia.org/wiki/HOCR . Only outputing the lines level
+* Output in hOCR https://en.wikipedia.org/wiki/HOCR
 
