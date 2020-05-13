@@ -127,4 +127,4 @@ def google_document_text_detection(filter:None):
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    google_document_text_detection("scan2")
+    google_document_text_detection("scan")

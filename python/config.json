@@ -5,6 +5,25 @@
   "paragraphTag":["<p>","</p>"],
   "sentenceTag":["<span>","</span>"],
   "config": {
+    "page": {
+      "ImageTextBoxingXThreshold": 12.0,
+      "ImageTextBoxingYThreshold": 20.0,
+      "ImageTextBoxingBulletListAdjustment": 0.0,
+      "Thresholds": {
+        "LeftAlignment": {
+          "Xthresholdratio": 1.5,
+          "Ythresholdratio": 1.2
+        },
+        "RightAlignment": {
+          "Xthresholdratio": 1.5,
+          "Ythresholdratio": 1.2
+        },
+        "CenteredAlignment": {
+          "Xthresholdratio": 1.0,
+          "Ythresholdratio": 1.2
+        }
+      }
+    },
     "pixel": {
       "ImageTextBoxingXThreshold": 6.0,
       "ImageTextBoxingYThreshold": 10.0,

@@ -33,6 +33,7 @@ def draw_boxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
                 bound.BoundingBox[2].X+padding, bound.BoundingBox[2].Y+padding,
                 bound.BoundingBox[3].X+padding, bound.BoundingBox[3].Y+padding], 
                 outline=color)
+            draw.text((bound.XMedian, bound.YMedian),str(bound.blockid),(0,0,0))
     return image
 
 def batch_read_file_in_stream(filter:None):
@@ -75,7 +76,7 @@ def batch_read_file_in_stream(filter:None):
                     outfile.write(line.text)
                     outfile.write('\n')
 
-        bboxresponse=BBoxHelper().processOCRResponse(image_analysis.response.content.decode("utf-8"),YXSortedOutput=True)
+        bboxresponse=BBoxHelper().processOCRResponse(image_analysis.response.content.decode("utf-8"))  
         print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
         # Write the improved ocr response
@@ -100,6 +101,6 @@ def batch_read_file_in_stream(filter:None):
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    batch_read_file_in_stream("scan2")
+    batch_read_file_in_stream("scan6")
     # from tools import execute_samples
     # execute_samples(globals(), SUBSCRIPTION_KEY_ENV_NAME)
