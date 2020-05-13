@@ -8,11 +8,12 @@ While OCR processing images containing lots of textual information, it might be 
 
 ### Why more meanifull text matters? 
 
-With a closer-human-readable text, you may leverage any Text Analytics such as Key Phrases, Entities Extraction with more confidence of its outcome.
-Any infographic becomes alive, overcoming the alt text feature for better Accessibility. 
-Translation 
-Convert Text to Speech : create audio files of specific blocks of text or the full scanned image. 
-Browser read-aloud. 
+With a closer-human-readable text, you may 
+- leverage any Text Analytics for Key Phrases, Entities Extraction with more confidence of its outcome.
+- Any infographic becomes alive, overcoming the alt text feature for better Accessibility. 
+- engage for Translation 
+- convert Text to Speech : create audio files of specific blocks of text or the full scanned image. 
+- enable the Browser read-aloud feature for your end-users
 
 ### Ocr Output Support
 
@@ -25,25 +26,25 @@ https://docs.microsoft.com/en-us/azure/cognitive-services/computer-vision/concep
 https://cloud.google.com/vision/docs
 https://cloud.google.com/vision/docs/ocr#vision_text_detection-python
 
-## BBoxHelper Setup
+## BBoxHelper - Getting Started
 
 BBoxHelper has been developed for Python 3.7+. Install the requirements as specified in the requirements.txt. 
 
-Depending on your preferred OCR service Microsoft Azure or Google, 
+Depending on your preferred OCR service Microsoft Azure or Google
 
 ### Microsoft Azure 
-Set the below environment variables in your env. The ComputerVision location refers to the region you have registered your Azure Computer Vision service. You only need th region there. 
+Set the below 2 environment variables in your env. 
+
+The ComputerVision location refers to the region you have registered your Azure Computer Vision service. You only need th region there. 
 ```
-SUBSCRIPTION_KEY_ENV_NAME = os.environ.get("COMPUTERVISION_SUBSCRIPTION_KEY", None)
-COMPUTERVISION_LOCATION = os.environ.get("COMPUTERVISION_LOCATION", "westeurope")
+COMPUTERVISION_SUBSCRIPTION_KEY
+COMPUTERVISION_LOCATION
 ```
 
 ### Google 
-Set the below environment variables. The ComputerVision location refers to the region you have registered your Azure Computer Vision service. You only need th region there. 
+Refer to Google documentation to authenticate the Google Client : https://cloud.google.com/vision/docs/ocr#set-up-your-gcp-project-and-authentication
 
-Refere to Google documentation to authenticate the Google Client : https://cloud.google.com/vision/docs/ocr#set-up-your-gcp-project-and-authentication
-
-### Run the Sample script(s) 
+## BBoxHelper - Run the Sample script(s) 
 
 Each supported OCR platform has a corresponding testing script 
 
@@ -82,7 +83,6 @@ RESULTS_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../tests-results")
 ```
 
-
 ### References
 #### Azure Computer Vision SDK for Python 
 https://github.com/Azure/azure-sdk-for-python/tree/76a0d91c32a79561a7d5666e421908e7c4cffc6a/sdk/cognitiveservices/azure-cognitiveservices-vision-computervision
@@ -117,7 +117,7 @@ def draw_boxes(image, bounds, color):
 
 ### Limitations 
 
-The bboxhelper doesn't output Words levels as its goal is to build sentences and paragraphs. 
+The bboxhelper doesn't output Words levels as its goal is to build meaning full blocks of text containing paragraphs & sentences. 
 
 ## Upcoming improvements
 
