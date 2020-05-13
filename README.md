@@ -1,6 +1,6 @@
 # OcrLayout Project
 
-Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of blocks, paragraphs , lines or words. 
+Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of blocks, paragraphs, lines or words eventually merging them when relevant. 
 
 ## BBoxHelper concept
 
@@ -27,7 +27,7 @@ https://cloud.google.com/vision/docs/ocr#vision_text_detection-python
 
 ## BBoxHelper Setup
 
-BBoxHelper has been developed for Python 3.7+. 
+BBoxHelper has been developed for Python 3.7+. Install the requirements as specified in the requirements.txt. 
 
 Depending on your preferred OCR service Microsoft Azure or Google, 
 
@@ -48,16 +48,30 @@ Refere to Google documentation to authenticate the Google Client : https://cloud
 Each supported OCR platform has a corresponding testing script 
 
 Under the project python directory, 
-- execute the *bboxtester.azure.py* for testing with Microsoft Azure Computer Vision OCR. 
-- execute the *bboxtester.google.py* for testing with Google Computer Vision OCR. 
+- execute the **bboxtester.azure.py** for testing with Microsoft Azure Computer Vision OCR. 
+- execute the **bboxtester.google.py** for testing with Google Computer Vision OCR. 
 
 Each sample script will
 - process all images located under the images script (one level of the python dir), 
 - call the corresponding OCR service, 
 - persist the raw ocr response on disk in the tests-results or the directory of your choice
 - persist the original image with the bouding boxes of the raw OCR response
-- call on the BBOx Helper
-- persist the original image with the bouding boxes of the BBoxHelper OCR response
+- call on the BBOx Helper processOCRResponse() method. 
+- persist the original image with the bouding boxes of the BBoxHelper OCR response .
+
+### Calling the BBoxHelper main method 
+For Azure 
+```
+    bboxresponse=BBoxHelper().processOCRResponse(image_analysis.response.content.decode("utf-8"))
+```
+
+For Google
+```
+    ocrresponse=BBOXOCRResponse.from_google(document)
+    bboxresponse=BBoxHelper().processOCRResponse(ocrresponse)
+```
+
+Azure OCR response can be passed as-is, whereas for Google we need to reformat it using the **BBOXOCRResponse.from_google()** method.
 
 #### Changing the input and output directories
 ```
