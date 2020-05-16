@@ -13,8 +13,8 @@ from datetime import datetime
 from os import path
 from pathlib import Path
 from typing import List
-import numpy as np
 
+import numpy as np
 import requests
 
 from bboxutils import BBoxUtils
@@ -85,10 +85,20 @@ class BBOXNormalizedLine():
         self.avgheight = avgheight
         self.stdheight = stdheight
         self.blockid=0.0
+        self.listids=[]
 
     def __calculateMedians(self):
         self.XMedian=(min(self.BoundingBox[0].X,self.BoundingBox[3].X) + max(self.BoundingBox[1].X,self.BoundingBox[2].X))/2
         self.YMedian=(min(self.BoundingBox[0].Y,self.BoundingBox[3].Y) + max(self.BoundingBox[1].Y,self.BoundingBox[2].Y))/2
+    
+    def getBoxesAsArray(self):
+        result=[]
+        for box in self.BoundingBox:
+            result.append([box.X,box.Y])
+        return result
+
+    def getBoxesAsRectangle(self):
+        return (self.BoundingBox[0].X,self.BoundingBox[0].Y,(self.BoundingBox[2].X-self.BoundingBox[0].X),(self.BoundingBox[2].Y-self.BoundingBox[0].Y))
 
     def __appendText(self, Text):
         self.Text += Text
@@ -154,8 +164,8 @@ class BBOXNormalizedLine():
         return cls(BoundingBox=points,Text=block_text)
 
 class BBOXPageLayout():
-    def __init__(self, Page:int = 0,ClockwiseOrientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None):
-        self.Page=Page
+    def __init__(self, Id:int = 0,ClockwiseOrientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None):
+        self.Id=Id
         self.ClockwiseOrientation=ClockwiseOrientation
         self.Width=Width
         self.Height=Height
@@ -166,12 +176,12 @@ class BBOXPageLayout():
     @classmethod
     def from_azure(cls, data):
         lines = list(map(BBOXNormalizedLine.from_azure, data["lines"]))
-        return cls(Page=data["page"],ClockwiseOrientation=data["clockwiseOrientation"],Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
+        return cls(Id=data["page"],ClockwiseOrientation=data["clockwiseOrientation"],Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
     @classmethod
     def from_google(cls, page):
         lines = list(map(BBOXNormalizedLine.from_google, page.blocks))
         # return cls(Page=1,Width=page.width,Height=page.height,Language=page.property.detectedLanguages[0].languageCode,Lines=lines)
-        return cls(Page=1,Width=page.width,Height=page.height,Lines=lines)
+        return cls(Id=1,Width=page.width,Height=page.height,Lines=lines)
 
 class BBOXOCRResponse():
     def __init__(self,status:str = None,Text:str=None,original_text:str=None,recognitionResults:List[BBOXPageLayout]=None):
@@ -187,6 +197,10 @@ class BBOXOCRResponse():
     def from_google(cls, document):
         pages = list(map(BBOXPageLayout.from_google,document.pages))
         return cls(status="success",original_text=document.text,recognitionResults=pages)
+    # @classmethod
+    # def from_googlejsonstring(cls, data):
+    #     object = json.loads(data)
+    #     return cls.from_azure(object)
 
 # Constants
 LeftAlignment="LeftAlignment"
@@ -206,17 +220,20 @@ class BBoxHelper():
         logging.config.fileConfig(log_file_path)
         self.logger = logging.getLogger('bboxhelper')  # get a logger
 
-    def processOCRResponse(self, input_json, YXSortedOutput:bool = False, boxSeparator:str = None):
+    def processOCRResponse(self, input_json, sortingAlgo=None, boxSeparator:str = None):
+        """processOCRResponse method
+        Process an OCR Response input (Azure,Google) and returns a new BBox format OCR response.
+        """
         #load the input json into a response object
         if isinstance(input_json,str):
             response=BBOXOCRResponse.from_azure(json.loads(input_json))
         elif isinstance(input_json,BBOXOCRResponse):
             response=input_json
 
-        newtext = ""        
+        newtext = ""
         # Rotate the BBox of each page based on its corresponding orientation
         for item in response.pages:
-            self.logger.debug("Processing Page {}".format(str(item.Page)))
+            self.logger.debug("Processing Page {}".format(str(item.Id)))
             if self.ocrconfig.pageTag:
                 newtext+=self.ocrconfig.pageTag[0]
             rotation = round(item.ClockwiseOrientation,0)
@@ -239,7 +256,7 @@ class BBoxHelper():
             else:
                 self.logger.info("TODO rotation adjustment required ? ")
 
-            newtext += self.processOCRPageLayout(item, YXSortedOutput, boxSeparator).Text
+            newtext += self.processOCRPageLayout(item, sortingAlgo, boxSeparator).Text
 
             if self.ocrconfig.pageTag:
                 newtext+=self.ocrconfig.pageTag[1]
@@ -334,43 +351,46 @@ class BBoxHelper():
                 regiony = line.BoundingBox[2].Y
         return XSortedList
 
-    def processOCRPageLayout(self, input_json, YXSortedOutput:bool = False, boxSeparator:str = None):
+    def processOCRPageLayout(self, input_json, sortingAlgo=None, boxSeparator:str = None):
+        """ processOCRPageLayout method
+            Process a single page from an OCR input, returns the same page with enhanced boxing data & text.
+        """
         if isinstance(input_json,str):
-            layout=BBOXPageLayout.from_azure(json.loads(input_json))
+            page=BBOXPageLayout.from_azure(json.loads(input_json))
         elif isinstance(input_json,BBOXPageLayout):
-            layout=input_json
+            page=input_json
 
-        inlines=[o for o in layout.Lines if o.merged == False]
-        self.logger.debug("{1}|Input # lines {0}".format(len(inlines),str(layout.Page)))
+        inlines=[o for o in page.Lines if o.merged == False]
+        self.logger.debug("{1}|Input # lines {0}".format(len(inlines),str(page.Id)))
 
         for alignment in Alignments:
-            self.logger.debug("{1}|Processing {0}".format(alignment,str(layout.Page)))
-            layout.Lines = self.__processLineBoundingBoxes(layout.Lines,alignment,layout.Unit)
+            self.logger.debug("{1}|Processing {0}".format(alignment,str(page.Id)))
+            page.Lines = self.__processLineBoundingBoxes(page.Lines,alignment,page.Unit)
 
-        outlines=[o for o in layout.Lines if o.merged == False]
-        self.logger.debug("{1}|Output # lines {0}".format(len(outlines),str(layout.Page)))
+        outlines=[o for o in page.Lines if o.merged == False]
+        self.logger.debug("{1}|Output # lines {0}".format(len(outlines),str(page.Id)))
 
-        # Sorting Strategy 
-        # Based on the W/H ratio we set the sorting strategy
-        # if layout.Width/layout.Height > 1.0:
-        #     YXSortedOutput=False
-        # else: 
-        #     YXSortedOutput=True
+        if sortingAlgo is None:
+            # Default Sorting Strategy 
+            # Based on the W/H ratio we set the sorting strategy
+            if page.Width/page.Height > 1.0:
+                YXSortedOutput=False
+            else: 
+                YXSortedOutput=True
 
-        if (YXSortedOutput):
-            self.logger.debug("{0}|Sorting by YX".format(str(layout.Page)))
-            # //Sort the new boxes by Y then X and output the text out of it
-            XSortedList = sorted(outlines,key= lambda o: (o.YMedian, o.XMedian))
-            # XSortedList = sorted(outlines,key= lambda o: (o.BoundingBox[0].Y, o.BoundingBox[0].X))
+            if (YXSortedOutput):
+                self.logger.debug("{0}|Sorting by YX".format(str(page.Id)))
+                sortedBlocks = sorted(outlines,key= lambda o: (o.BoundingBox[0].Y, o.XMedian))
+            else:
+                self.logger.debug("{0}|Default sorting strategy".format(str(page.Id)))
+                sortedBlocks = sorted(outlines,key= lambda o: (o.BoundingBox[0].X, o.YMedian))
         else:
-            self.logger.debug("{0}|Default sorting strategy".format(str(layout.Page)))
-            # XSortedList = sorted(outlines,key= lambda o: (o.X, o.YMedian))
-            XSortedList = self.__processLineBoundingBoxes(outlines,LeftAlignment,"page")
-            # XSortedList=self.sortOCRBlocks(outlines)
+            sortedBlocks = sortingAlgo(page.Id,page.Width,page.Height,blocks=outlines)
 
-        # Output
+        # Output the actual from the sorted blocks
         newtext = ""
-        for line in XSortedList:
+        for i,block in enumerate(sortedBlocks):
+            # block.blockid = i
             if boxSeparator is None:
                 if self.ocrconfig.blockTag:
                     newtext+=self.ocrconfig.blockTag[0]
@@ -378,8 +398,8 @@ class BBoxHelper():
                 newtext+=boxSeparator[0]
             # Normalized to Rectangles? 
             if self.ocrconfig.rectangleNormalization:
-                BBoxUtils.makeRectangle(line)
-            newtext+=line.Text
+                BBoxUtils.makeRectangle(block)
+            newtext+=block.Text
             if boxSeparator is None:
                 if self.ocrconfig.blockTag:
                     newtext+=self.ocrconfig.blockTag[1]
@@ -390,24 +410,7 @@ class BBoxHelper():
                 newtext+=boxSeparator[1]
 
         # // Setting the new Normalized Lines we created.
-        layout.Lines = XSortedList
+        page.Lines = sortedBlocks
         # // Updating the Text after our processing.
-        layout.Text = newtext
-        return layout
-
-    def sortOCRBlocks(self,blocks):
-        boxref = 0
-        # XSortedList = sorted([o for o in blocks if o.merged == False],key= lambda o: (o.BoundingBox[boxref].X,o.BoundingBox[boxref].Y))
-        XSortedList = sorted([o for o in blocks if o.merged == False],key= lambda o: (o.XMedian,o.BoundingBox[boxref].Y))
-        blockcounter=0.0
-        for block in XSortedList:
-            blockcounter+=1
-            block.blockid+=blockcounter
-
-        YSortedList = sorted([o for o in XSortedList if o.merged == False],key= lambda o: (o.BoundingBox[boxref].Y,o.BoundingBox[boxref].X))
-        blockcounter=0.0
-        for block in YSortedList:
-            blockcounter+=2
-            block.blockid+=blockcounter
-
-        return sorted([o for o in YSortedList if o.merged == False],key= lambda o: (o.blockid,o.BoundingBox[boxref].Y))
+        page.Text = newtext
+        return page

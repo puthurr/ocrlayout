@@ -1,11 +1,12 @@
 import json
 import os.path
-
+import copy
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from msrest.authentication import CognitiveServicesCredentials
-from PIL import Image, ImageDraw
-
+from PIL import Image, ImageDraw, ImageFont
+from bboxutils import BBoxSort
 from bboxhelper import BBoxHelper,BBOXOCRResponse
+import cv2
 
 SUBSCRIPTION_KEY_ENV_NAME = os.environ.get("COMPUTERVISION_SUBSCRIPTION_KEY", None)
 COMPUTERVISION_LOCATION = os.environ.get("COMPUTERVISION_LOCATION", "westeurope")
@@ -33,10 +34,12 @@ def draw_boxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
                 bound.BoundingBox[2].X+padding, bound.BoundingBox[2].Y+padding,
                 bound.BoundingBox[3].X+padding, bound.BoundingBox[3].Y+padding], 
                 outline=color)
-            draw.text((bound.XMedian, bound.YMedian),str(bound.blockid),(0,0,0))
+            if bound.blockid>0.0:
+                font = ImageFont.load_default()
+                draw.text((bound.XMedian, bound.YMedian),str(round(bound.blockid,4)),fill ="red",font=font)
     return image
 
-def batch_read_file_in_stream(filter:None):
+def batch_read_file_in_stream(filter=None,callOCR=True):
     """RecognizeTextUsingBatchReadAPI.
     This will recognize text of the given image using the Batch Read API.
     """
@@ -52,31 +55,43 @@ def batch_read_file_in_stream(filter:None):
                 continue 
         print("Image Name {}".format(filename))
         (imgname,imgext) = os.path.splitext(filename)
-        # Azure Computer Vision Call
-        with open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_stream:
-            job = client.batch_read_file_in_stream(
-                image=image_stream,
-                raw=True
-            )
-        operation_id = job.headers['Operation-Location'].split('/')[-1]
 
-        image_analysis = client.get_read_operation_result(operation_id,raw=True)
-        while image_analysis.output.status in ['NotStarted', 'Running']:
-            time.sleep(1)
-            image_analysis = client.get_read_operation_result(operation_id=operation_id,raw=True)
-        print("\tJob completion is: {}".format(image_analysis.output.status))
-        print("\tRecognized {} page(s)".format(len(image_analysis.output.recognition_results)))
+        if callOCR:
+            # Azure Computer Vision Call
+            with open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_stream:
+                job = client.batch_read_file_in_stream(
+                    image=image_stream,
+                    raw=True
+                )
+            operation_id = job.headers['Operation-Location'].split('/')[-1]
 
-        with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.batch_read.json"), 'w') as outfile:
-            outfile.write(image_analysis.response.content.decode("utf-8"))
+            image_analysis = client.get_read_operation_result(operation_id,raw=True)
+            while image_analysis.output.status in ['NotStarted', 'Running']:
+                time.sleep(1)
+                image_analysis = client.get_read_operation_result(operation_id=operation_id,raw=True)
+            print("\tJob completion is: {}".format(image_analysis.output.status))
+            print("\tRecognized {} page(s)".format(len(image_analysis.output.recognition_results)))
 
-        with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.batch_read.text.json"), 'w') as outfile:
-            for rec in image_analysis.output.recognition_results:
-                for line in rec.lines:
-                    outfile.write(line.text)
-                    outfile.write('\n')
+            with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.batch_read.json"), 'w') as outfile:
+                outfile.write(image_analysis.response.content.decode("utf-8"))
 
-        bboxresponse=BBoxHelper().processOCRResponse(image_analysis.response.content.decode("utf-8"))  
+            with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.batch_read.text.json"), 'w') as outfile:
+                for rec in image_analysis.output.recognition_results:
+                    for line in rec.lines:
+                        outfile.write(line.text)
+                        outfile.write('\n')
+
+            ocrresponse=BBOXOCRResponse.from_azure(json.loads(image_analysis.response.content.decode("utf-8")))
+            bboxresponse=BBoxHelper().processOCRResponse(copy.deepcopy(ocrresponse),sortingAlgo=BBoxSort.contoursSort)
+        else: 
+            # Use local OCR cached response when available
+            with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.batch_read.json"), 'r') as cachefile:
+                ocrresponse = cachefile.read().replace('\n', '')
+
+            # Deserialize the string 
+            ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
+            bboxresponse=BBoxHelper().processOCRResponse(copy.deepcopy(ocrresponse),sortingAlgo=BBoxSort.contoursSort)
+
         print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
         # Write the improved ocr response
@@ -90,9 +105,9 @@ def batch_read_file_in_stream(filter:None):
         imagefn=os.path.join(IMAGES_FOLDER, filename)
         image = Image.open(imagefn)
         bboximg = image.copy()
-        response=BBOXOCRResponse.from_azure(json.loads(image_analysis.response.content.decode("utf-8")))
+
         # Write the Azure OCR resulted boxes image
-        draw_boxes(image, response, 'red')
+        draw_boxes(image, ocrresponse, 'red')
         save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure"+imgext))
         # Write the BBOX resulted boxes image
         draw_boxes(bboximg, bboxresponse, 'black',padding=1)
@@ -101,6 +116,6 @@ def batch_read_file_in_stream(filter:None):
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    batch_read_file_in_stream("scan6")
+    batch_read_file_in_stream("scan2",callOCR=False)
     # from tools import execute_samples
     # execute_samples(globals(), SUBSCRIPTION_KEY_ENV_NAME)
