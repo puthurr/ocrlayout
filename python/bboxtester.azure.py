@@ -116,6 +116,6 @@ def batch_read_file_in_stream(filter=None,callOCR=True):
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    batch_read_file_in_stream("scan2",callOCR=False)
+    batch_read_file_in_stream("scan",callOCR=False)
     # from tools import execute_samples
     # execute_samples(globals(), SUBSCRIPTION_KEY_ENV_NAME)

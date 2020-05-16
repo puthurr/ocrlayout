@@ -19,6 +19,7 @@ import requests
 
 from bboxutils import BBoxUtils
 
+
 #
 # Bounding Boxes Config Classes
 #
@@ -76,7 +77,9 @@ class BBOXPoint():
         return cls(**data)
 
 class BBOXNormalizedLine():
-    def __init__(self, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avgheight=0.0, stdheight=0.0):
+    def __init__(self, Idx, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avgheight=0.0, stdheight=0.0):
+        self.startIdx=Idx
+        self.endIdx=Idx
         self.BoundingBox = BoundingBox
         self.Text = ''
         self.merged = merged
@@ -115,9 +118,10 @@ class BBOXNormalizedLine():
         self.BoundingBox[2] = BBoxUtils.maxXmaxY(2,self,line)
         self.BoundingBox[3] = BBoxUtils.minXmaxY(3,self,line)
         self.__calculateMedians()
+        self.endIdx=line.endIdx
         
     @classmethod
-    def from_azure(cls, data):
+    def from_azure(cls, index, data):
         points = list()
         array=data["boundingBox"]
         if ( len(array) > 4 ):
@@ -143,7 +147,7 @@ class BBOXNormalizedLine():
         npheights = np.array(wordheights)
         avgheight = np.average(npheights)
         stdheight = np.std(npheights, dtype=np.float64)
-        return cls(BoundingBox=points,Text=data['text'],stdheight=stdheight,avgheight=avgheight)
+        return cls(Idx=index,BoundingBox=points,Text=data['text'],stdheight=stdheight,avgheight=avgheight)
     @classmethod
     def from_google(cls, block):
         points = list()
@@ -175,7 +179,8 @@ class BBOXPageLayout():
         self.Lines=Lines
     @classmethod
     def from_azure(cls, data):
-        lines = list(map(BBOXNormalizedLine.from_azure, data["lines"]))
+        # lines = list(map(BBOXNormalizedLine.from_azure, data["lines"]))
+        lines=[BBOXNormalizedLine.from_azure(i,line) for i,line in enumerate(data["lines"])] 
         return cls(Id=data["page"],ClockwiseOrientation=data["clockwiseOrientation"],Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
     @classmethod
     def from_google(cls, page):
@@ -341,7 +346,7 @@ class BBoxHelper():
 
                 if (regiony == 0.0):
                     prevline = line
-                elif (ycurrent >= lowb and ycurrent <= highb):
+                elif (ycurrent >= lowb and ycurrent < highb):
                     prevline.appendLine(line)
                 else:
                     prevline = line
@@ -363,6 +368,7 @@ class BBoxHelper():
         inlines=[o for o in page.Lines if o.merged == False]
         self.logger.debug("{1}|Input # lines {0}".format(len(inlines),str(page.Id)))
 
+        # Go through potential Text Alignment : Left, Right and Centered.
         for alignment in Alignments:
             self.logger.debug("{1}|Processing {0}".format(alignment,str(page.Id)))
             page.Lines = self.__processLineBoundingBoxes(page.Lines,alignment,page.Unit)
