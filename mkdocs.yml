@@ -1,6 +1,18 @@
 site_name: OCR Layout Helper
+site_description: 'Ability to get more meaninful text out of common OCR outputs.'
+site_author: 'Nicolas Uthurriague'
 nav:
-    - Home: index.md
+  - Home: index.md
+  - 'Getting Started': getting-started.md
+  - 'Sorting Strategy': sorting.md
+  - Examples:
+    - 'Simple Infographic': examples/infography1.md
+    - 'Complex Infographic': examples/infography2.md
+    - 'Simple page Layout': examples/scan1.md
+    - 'Common page Layout': examples/scan6.md
+    - 'Complex page Layout': examples/scan2.md
+  - About:
+    - License: about/license.md
 theme:
   name: 'material'
   palette:
@@ -10,10 +22,11 @@ theme:
 extra_css:
   - 'extra.css'
 markdown_extensions:
-  - admonition
   - codehilite:
       guess_lang: false
   - toc:
       permalink: true
-repo_url: https://puthurr.github.com/ocrlayout
+plugins:
+  - search
+repo_url: https://github.com/puthurr/ocrlayout
 edit_uri: blob/master/docs/

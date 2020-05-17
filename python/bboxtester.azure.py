@@ -72,33 +72,30 @@ def batch_read_file_in_stream(filter=None,callOCR=True):
             print("\tJob completion is: {}".format(image_analysis.output.status))
             print("\tRecognized {} page(s)".format(len(image_analysis.output.recognition_results)))
 
-            with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.batch_read.json"), 'w') as outfile:
+            with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.json"), 'w') as outfile:
                 outfile.write(image_analysis.response.content.decode("utf-8"))
 
-            with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.batch_read.text.json"), 'w') as outfile:
+            with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.text.json"), 'w') as outfile:
                 for rec in image_analysis.output.recognition_results:
                     for line in rec.lines:
                         outfile.write(line.text)
                         outfile.write('\n')
 
-            ocrresponse=BBOXOCRResponse.from_azure(json.loads(image_analysis.response.content.decode("utf-8")))
-            bboxresponse=BBoxHelper().processOCRResponse(copy.deepcopy(ocrresponse),sortingAlgo=BBoxSort.contoursSort)
+            ocrresponse=image_analysis.response.content.decode("utf-8")
+            bboxresponse=BBoxHelper().processAzureOCRResponse(ocrresponse,boxSeparator=["","\r\n"])
         else: 
             # Use local OCR cached response when available
-            with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.batch_read.json"), 'r') as cachefile:
+            with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.json"), 'r') as cachefile:
                 ocrresponse = cachefile.read().replace('\n', '')
-
-            # Deserialize the string 
-            ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
-            bboxresponse=BBoxHelper().processOCRResponse(copy.deepcopy(ocrresponse),sortingAlgo=BBoxSort.contoursSort)
+            bboxresponse=BBoxHelper().processAzureOCRResponse(ocrresponse,boxSeparator=["","\r\n"])
 
         print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
         # Write the improved ocr response
-        with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.bbox.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.bbox.json"), 'w') as outfile:
             outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
         # Write the improved ocr text
-        with open(os.path.join(RESULTS_FOLDER, imgname+".azcv.bbox.text.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.bbox.text.json"), 'w') as outfile:
             outfile.write(bboxresponse.Text)
 
         # Create the Before and After images
@@ -107,7 +104,8 @@ def batch_read_file_in_stream(filter=None,callOCR=True):
         bboximg = image.copy()
 
         # Write the Azure OCR resulted boxes image
-        draw_boxes(image, ocrresponse, 'red')
+        orig_ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
+        draw_boxes(image, orig_ocrresponse, 'red')
         save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure"+imgext))
         # Write the BBOX resulted boxes image
         draw_boxes(bboximg, bboxresponse, 'black',padding=1)
@@ -116,6 +114,8 @@ def batch_read_file_in_stream(filter=None,callOCR=True):
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    batch_read_file_in_stream("scan",callOCR=False)
-    # from tools import execute_samples
-    # execute_samples(globals(), SUBSCRIPTION_KEY_ENV_NAME)
+    import os
+    if not os.path.exists(RESULTS_FOLDER):
+        os.makedirs(RESULTS_FOLDER)
+    # batch_read_file_in_stream("scan",callOCR=False)
+    batch_read_file_in_stream("scan6",callOCR=False)

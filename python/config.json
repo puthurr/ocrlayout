@@ -1,7 +1,7 @@
 {
   "rectangleNormalization":true,
   "pageTag":["<div>","</div>"],
-  "blockTag":["<div>","</div>"],
+  "blockTag":["<p>","</p>"],
   "paragraphTag":["<p>","</p>"],
   "sentenceTag":["<span>","</span>"],
   "config": {
@@ -39,7 +39,7 @@
         },
         "CenteredAlignment": {
           "Xthresholdratio": 1.0,
-          "Ythresholdratio": 1.2
+          "Ythresholdratio": 1.1
         }
       }
     },

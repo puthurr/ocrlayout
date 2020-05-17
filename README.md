@@ -58,7 +58,7 @@ Each sample script will
 - persist the raw ocr response on disk in the tests-results or the directory of your choice
 - persist the original image with the bouding boxes of the raw OCR response
 - call on the BBOx Helper processOCRResponse() method. 
-- persist the original image with the bouding boxes of the BBoxHelper OCR response .
+- persist the original image with the bouding boxes of the BBoxHelper OCR response.
 
 ### Calling the BBoxHelper main method 
 For Azure 
@@ -123,3 +123,15 @@ The bboxhelper doesn't output Words levels as its goal is to build meaning full 
 
 * Output in hOCR https://en.wikipedia.org/wiki/HOCR
 
+
+## Contributing
+
+This project welcomes contributions and suggestions.
+
+This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
+contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+
+## Disclaimer
+
+**THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.**

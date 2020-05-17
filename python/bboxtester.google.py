@@ -87,16 +87,15 @@ def google_document_text_detection(filter:None):
         # with open(os.path.join(RESULTS_FOLDER, filename+".azcv.batch_read.json"), 'w') as outfile:
         #     outfile.write(image_analysis.response.content.decode("utf-8"))
 
-        with open(os.path.join(RESULTS_FOLDER, imgname+".gocv.vision.text.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.text.json"), 'w') as outfile:
             outfile.write(document.text)
 
         # Create BBOX OCR Response from Google's response object
-        ocrresponse=BBOXOCRResponse.from_google(document)
-        bboxresponse=BBoxHelper().processOCRResponse(ocrresponse,YXSortedOutput=False)
+        bboxresponse=BBoxHelper().processGoogleOCRResponse(document,boxSeparator=["","\r\n"])
 
-        with open(os.path.join(RESULTS_FOLDER, imgname+".gocv.bbox.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.json"), 'w') as outfile:
             outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
-        with open(os.path.join(RESULTS_FOLDER, imgname+".gocv.bbox.text.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.text.json"), 'w') as outfile:
             outfile.write(bboxresponse.Text)
 
         bounds=[[],[],[],[],[],[]]
@@ -127,4 +126,7 @@ def google_document_text_detection(filter:None):
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
-    google_document_text_detection("scan")
+    import os
+    if not os.path.exists(RESULTS_FOLDER):
+        os.makedirs(RESULTS_FOLDER)
+    google_document_text_detection("image")

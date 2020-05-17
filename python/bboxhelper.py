@@ -17,8 +17,7 @@ from typing import List
 import numpy as np
 import requests
 
-from bboxutils import BBoxUtils
-
+from bboxutils import BBoxUtils,BBoxSort
 
 #
 # Bounding Boxes Config Classes
@@ -149,7 +148,7 @@ class BBOXNormalizedLine():
         stdheight = np.std(npheights, dtype=np.float64)
         return cls(Idx=index,BoundingBox=points,Text=data['text'],stdheight=stdheight,avgheight=avgheight)
     @classmethod
-    def from_google(cls, block):
+    def from_google(cls, index, block):
         points = list()
         for bb in block.bounding_box.vertices:
             points.append(BBOXPoint(bb.x,bb.y))
@@ -165,7 +164,7 @@ class BBOXNormalizedLine():
                         elif symbol.property.detected_break.type==5:
                             block_text+='\r\n'
                             # EOL_SURE_SPACE
-        return cls(BoundingBox=points,Text=block_text)
+        return cls(Idx=index,BoundingBox=points,Text=block_text)
 
 class BBOXPageLayout():
     def __init__(self, Id:int = 0,ClockwiseOrientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None):
@@ -179,13 +178,11 @@ class BBOXPageLayout():
         self.Lines=Lines
     @classmethod
     def from_azure(cls, data):
-        # lines = list(map(BBOXNormalizedLine.from_azure, data["lines"]))
         lines=[BBOXNormalizedLine.from_azure(i,line) for i,line in enumerate(data["lines"])] 
         return cls(Id=data["page"],ClockwiseOrientation=data["clockwiseOrientation"],Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
     @classmethod
     def from_google(cls, page):
-        lines = list(map(BBOXNormalizedLine.from_google, page.blocks))
-        # return cls(Page=1,Width=page.width,Height=page.height,Language=page.property.detectedLanguages[0].languageCode,Lines=lines)
+        lines=[BBOXNormalizedLine.from_google(i,line) for i,line in enumerate(page.blocks)] 
         return cls(Id=1,Width=page.width,Height=page.height,Lines=lines)
 
 class BBOXOCRResponse():
@@ -225,16 +222,33 @@ class BBoxHelper():
         logging.config.fileConfig(log_file_path)
         self.logger = logging.getLogger('bboxhelper')  # get a logger
 
-    def processOCRResponse(self, input_json, sortingAlgo=None, boxSeparator:str = None):
+    def processAzureOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None):
+        """ processAzureOCRResponse method
+            Process an OCR Response input from Azure and returns a new BBox format OCR response.
+        """
+        #load the input json into a response object
+        if isinstance(input,str):
+            response=BBOXOCRResponse.from_azure(json.loads(input))
+        if isinstance(input,dict):
+            response=BBOXOCRResponse.from_azure(input)
+        elif isinstance(input,BBOXOCRResponse):
+            response=input
+
+        return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+
+    def processGoogleOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None):
+        """ processGoogleOCRResponse method
+            Process an OCR Response input from Google and returns a new BBox format OCR response.
+        """
+        #Create an BBOXOCRResponse object from Google input
+        response=BBOXOCRResponse.from_google(input)
+
+        return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+
+    def __processOCRResponse(self, response, sortingAlgo=BBoxSort.contoursSort, boxSeparator:str = None):
         """processOCRResponse method
         Process an OCR Response input (Azure,Google) and returns a new BBox format OCR response.
         """
-        #load the input json into a response object
-        if isinstance(input_json,str):
-            response=BBOXOCRResponse.from_azure(json.loads(input_json))
-        elif isinstance(input_json,BBOXOCRResponse):
-            response=input_json
-
         newtext = ""
         # Rotate the BBox of each page based on its corresponding orientation
         for item in response.pages:
@@ -342,7 +356,7 @@ class BBoxHelper():
                 # lowb=(regiony - (Ythresholdratio * self.ocrconfig.config[unit].ImageTextBoxingYThreshold))
                 lowb=regiony-(regiony*0.1)
                 highb=(regiony + (Ythresholdratio * self.ocrconfig.config[unit].ImageTextBoxingYThreshold))
-                self.logger.debug("{7}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.BoundingBox),str(line.Text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent <= highb)),str(line.XMedian),alignment))
+                self.logger.debug("{7}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.BoundingBox),str(line.Text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent < highb)),str(regiony),alignment))
 
                 if (regiony == 0.0):
                     prevline = line
