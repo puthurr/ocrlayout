@@ -17,48 +17,24 @@ from typing import List
 import numpy as np
 import requests
 
-from bboxutils import BBoxUtils,BBoxSort
+from bboxutils import BBoxUtils, BBoxSort, BBOXConfig
 
-#
-# Bounding Boxes Config Classes
-#
-class BBOXConfigEntryThreshold():
-    def __init__(self,Xthresholdratio,Ythresholdratio):
-        self.Xthresholdratio=Xthresholdratio
-        self.Ythresholdratio=Ythresholdratio
-    @classmethod
-    def from_json(cls, data):
-        return cls(**data)
+# Constants
+LeftAlignment="LeftAlignment"
+RightAlignment="RightAlignment"
+CenteredAlignment="CenteredAlignment"
 
-class BBOXConfigEntry():
-    def __init__(self,ImageTextBoxingXThreshold,ImageTextBoxingYThreshold,ImageTextBoxingBulletListAdjustment,Thresholds={}):
-        self.ImageTextBoxingXThreshold=ImageTextBoxingXThreshold
-        self.ImageTextBoxingYThreshold=ImageTextBoxingYThreshold
-        self.ImageTextBoxingBulletListAdjustment=ImageTextBoxingBulletListAdjustment
-        self.Thresholds=Thresholds
-    @classmethod
-    def from_json(cls, data):
-        obj={}
-        Thresholds=data["Thresholds"]
-        for key in Thresholds:
-            obj[key]=BBOXConfigEntryThreshold.from_json(Thresholds[key])
-        return cls(data["ImageTextBoxingXThreshold"],data["ImageTextBoxingYThreshold"],data["ImageTextBoxingBulletListAdjustment"],obj)
+Alignments = [LeftAlignment,RightAlignment,CenteredAlignment]
 
-class BBOXConfig():
-    def __init__(self,rectangleNormalization,pageTag:None,blockTag:None,paragraphTag:None,sentenceTag:None,config={}):
-        self.config=config
-        self.rectangleNormalization=rectangleNormalization
-        self.pageTag = pageTag
-        self.blockTag = blockTag
-        self.paragraphTag = paragraphTag
-        self.sentenceTag = sentenceTag
-    @classmethod
-    def from_json(cls, data):
-        ocfg={}
-        cfgs=data["config"]
-        for key in cfgs:
-            ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
-        return cls(rectangleNormalization=data["rectangleNormalization"],pageTag=data["pageTag"],blockTag=data["blockTag"],paragraphTag=data["paragraphTag"],sentenceTag=data["sentenceTag"],config=ocfg)
+# Load configuration
+json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json")
+with open(json_file_path) as json_file:
+    bboxconfig=BBOXConfig.from_json(json.loads(json_file.read()))
+
+log_file_path = path.join(path.dirname(path.abspath(__file__)), 'logging.conf')
+logging.config.fileConfig(log_file_path)
+bboxlogger = logging.getLogger('bboxhelper')  # get a logger
+
 #
 # Bounding Boxes OCR Classes
 #
@@ -155,25 +131,24 @@ class BBOXNormalizedLine():
         avgheight = np.average(npheights)
         stdheight = np.std(npheights, dtype=np.float64)
         return cls(Idx=index,BoundingBox=points,Text=data['text'],stdheight=stdheight,avgheight=avgheight)
+
     @classmethod
-    def from_google(cls, index, block):
+    def from_google(cls, line_counter, line_text, line_boxes):
         points = list()
-        for bb in block.bounding_box.vertices:
-            points.append(BBOXPoint(bb.x,bb.y))
-        # Text of the block
-        block_text=""
-        for paragraph in block.paragraphs:
-            for word in paragraph.words:
-                for symbol in word.symbols:
-                    block_text+=symbol.text
-                    if symbol.property.detected_break:
-                        if symbol.property.detected_break.type in [1,2,3]:
-                            block_text+=" "
-                        elif symbol.property.detected_break.type==5:
-                            block_text+=" "
-                            # block_text+='\r\n'
-                            # EOL_SURE_SPACE
-        return cls(Idx=index,BoundingBox=points,Text=block_text.strip())
+        for bb in range(4):
+            points.append(BBOXPoint(0,0))
+        # 
+        points[0].X = line_boxes[0][0].x 
+        points[0].Y = line_boxes[0][0].y 
+        points[3].X = line_boxes[0][3].x 
+        points[3].Y = line_boxes[0][3].y
+
+        points[1].X = line_boxes[-1][1].x 
+        points[1].Y = line_boxes[-1][1].y 
+        points[2].X = line_boxes[-1][2].x 
+        points[2].Y = line_boxes[-1][2].y 
+
+        return BBOXNormalizedLine(Idx=line_counter,BoundingBox=points,Text=line_text)
 
 class BBOXPageLayout():
     def __init__(self, Id:int = 0,ClockwiseOrientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None):
@@ -189,9 +164,46 @@ class BBOXPageLayout():
     def from_azure(cls, data):
         lines=[BBOXNormalizedLine.from_azure(i,line) for i,line in enumerate(data["lines"])] 
         return cls(Id=data["page"],ClockwiseOrientation=data["clockwiseOrientation"],Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
+
     @classmethod
     def from_google(cls, page):
-        lines=[BBOXNormalizedLine.from_google(i,line) for i,line in enumerate(page.blocks)] 
+        # lines=[BBOXNormalizedLine.from_google(i,line) for i,line in enumerate(page.blocks)] 
+        lines=[]
+        line_counter=0
+        line_text =""
+        line_boxes=[]
+        # Create the concept of lines for Google ocr response. 
+        for idb, block in enumerate(page.blocks):
+            for paragraph in block.paragraphs:
+                for word in paragraph.words:
+                    # Test if the enxt word is within range of the previous one. 
+                    # Google OCR doesn't split nicely text set in columns.
+                    if len(line_boxes)>0:
+                        xdiff=(word.bounding_box.vertices[0].x - line_boxes[-1][1].x)
+                        if xdiff > bboxconfig.config["pixel"].GoogleLineBreakThresholdInPixel:
+                            bboxlogger.debug("Google|Line Break {0}| {1} {2}".format(str(xdiff),str(line_counter),line_text))
+                            # Line break
+                            line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
+                            lines.append(line)
+                            line_text=""
+                            line_counter+=1
+                            line_boxes.clear()
+
+                    line_boxes.append(word.bounding_box.vertices)
+                    for symbol in word.symbols:
+                        line_text+=symbol.text
+                        if symbol.property.detected_break:
+                            if symbol.property.detected_break.type in [1,2]:
+                                line_text+=" "
+                            elif symbol.property.detected_break.type in [3,5]:
+                                bboxlogger.debug("Google|Detected Break {0}| {1} {2}".format(str(symbol.property.detected_break.type),str(line_counter),line_text))
+                                # Line Break
+                                line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
+                                lines.append(line)
+                                line_text=""
+                                line_counter+=1
+                                line_boxes.clear()
+
         return cls(Id=1,Width=page.width,Height=page.height,Lines=lines)
 
 class BBOXOCRResponse():
@@ -209,23 +221,7 @@ class BBOXOCRResponse():
         pages = list(map(BBOXPageLayout.from_google,document.pages))
         return cls(status="success",original_text=document.text,recognitionResults=pages)
 
-# Constants
-LeftAlignment="LeftAlignment"
-RightAlignment="RightAlignment"
-CenteredAlignment="CenteredAlignment"
-
-Alignments = [LeftAlignment,RightAlignment,CenteredAlignment]
-
 class BBoxHelper():
-
-    def __init__(self):
-        # Load configuration
-        json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json")
-        with open(json_file_path) as json_file:
-            self.ocrconfig=BBOXConfig.from_json(json.loads(json_file.read()))
-        log_file_path = path.join(path.dirname(path.abspath(__file__)), 'logging.conf')
-        logging.config.fileConfig(log_file_path)
-        self.logger = logging.getLogger('bboxhelper')  # get a logger
 
     def processAzureOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None):
         """ processAzureOCRResponse method
@@ -257,14 +253,14 @@ class BBoxHelper():
         newtext = ""
         # Rotate the BBox of each page based on its corresponding orientation
         for item in response.pages:
-            self.logger.debug("Processing Page {}".format(str(item.Id)))
-            if self.ocrconfig.pageTag:
-                newtext+=self.ocrconfig.pageTag[0]
+            bboxlogger.debug("Processing Page {}".format(str(item.Id)))
+            if bboxconfig.pageTag:
+                newtext+=bboxconfig.pageTag[0]
             rotation = round(item.ClockwiseOrientation,0)
-            self.logger.debug("Orientation {}".format(str(rotation)))
+            bboxlogger.debug("Orientation {}".format(str(rotation)))
             # TODO Do the Math for clockwise orientation
             if (rotation >= 360-1 or rotation == 0):
-                self.logger.debug("no rotation adjustment required")
+                bboxlogger.debug("no rotation adjustment required")
             elif (rotation >= 270-1):
                 # //Rotate 90 clockwise
                 for x in item.Lines:
@@ -278,12 +274,12 @@ class BBoxHelper():
                 for x in item.Lines:
                     x.BoundingBox = BBoxUtils.rotateBoundingBox(item.Width, item.Height, x.BoundingBox, 90)
             else:
-                self.logger.info("TODO rotation adjustment required ? ")
+                bboxlogger.info("TODO rotation adjustment required ? ")
 
             newtext += self.processOCRPageLayout(item, sortingAlgo, boxSeparator).Text
 
-            if self.ocrconfig.pageTag:
-                newtext+=self.ocrconfig.pageTag[1]
+            if bboxconfig.pageTag:
+                newtext+=bboxconfig.pageTag[1]
             else:
                 # Default page separator
                 newtext += '\r\n'
@@ -293,14 +289,14 @@ class BBoxHelper():
 
     def __processLineBoundingBoxes(self, lines, alignment, unit): 
         boxref = 0
-        Xthresholdratio = self.ocrconfig.config[unit].Thresholds[alignment].Xthresholdratio
-        Ythresholdratio = self.ocrconfig.config[unit].Thresholds[alignment].Ythresholdratio
+        Xthresholdratio = bboxconfig.config[unit].Thresholds[alignment].Xthresholdratio
+        Ythresholdratio = bboxconfig.config[unit].Thresholds[alignment].Ythresholdratio
         if ( alignment == LeftAlignment):
             boxref = 0
             # //Adjustment for bullet list text. 
             for line in lines:
                 if (line.Text.startswith(". ")):
-                    line.BoundingBox[boxref].X = line.BoundingBox[boxref].X + self.ocrconfig.config[unit].ImageTextBoxingBulletListAdjustment
+                    line.BoundingBox[boxref].X = line.BoundingBox[boxref].X + bboxconfig.config[unit].ImageTextBoxingBulletListAdjustment
             XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.BoundingBox[boxref].X,o.BoundingBox[boxref].Y))
         elif (alignment == RightAlignment):
             boxref = 1
@@ -309,9 +305,9 @@ class BBoxHelper():
             boxref = 1
             XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.XMedian,o.BoundingBox[boxref].Y))
         else:
-            self.logger.error("__processLineBoundingBoxes : Unknown text alignment")
+            bboxlogger.error("__processLineBoundingBoxes : Unknown text alignment")
 
-        self.logger.debug("bounding boxes count {}".format(len(XSortedList)))
+        bboxlogger.debug("bounding boxes count {}".format(len(XSortedList)))
 
         regions = list(list())
         regions.append(list())
@@ -325,10 +321,10 @@ class BBoxHelper():
             if (alignment == CenteredAlignment):
                 xcurrent = line.XMedian
 
-            lowb=(regionx - (Xthresholdratio * self.ocrconfig.config[unit].ImageTextBoxingXThreshold))
-            highb=(regionx + (Xthresholdratio * self.ocrconfig.config[unit].ImageTextBoxingXThreshold))
+            lowb=(regionx - (Xthresholdratio * bboxconfig.config[unit].ImageTextBoxingXThreshold))
+            highb=(regionx + (Xthresholdratio * bboxconfig.config[unit].ImageTextBoxingXThreshold))
             if lowb>0.0:
-                self.logger.debug("{6}|Region Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(regionidx),str(regionx),str(lowb),str(xcurrent),str(highb),str((xcurrent >= lowb and xcurrent <= highb)),alignment))
+                bboxlogger.debug("{6}|Region Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(regionidx),str(regionx),str(lowb),str(xcurrent),str(highb),str((xcurrent >= lowb and xcurrent <= highb)),alignment))
 
             if (regionx == 0.0):
                 regions[regionidx].append(line)
@@ -345,7 +341,7 @@ class BBoxHelper():
                 regions[regionidx].append(line)
                 regionx = xcurrent
 
-        self.logger.debug("{1}|Found {0} regions".format(len(regions),alignment))
+        bboxlogger.debug("{1}|Found {0} regions".format(len(regions),alignment))
 
         # //Second Pass on the Y Axis 
         for lines in regions:
@@ -353,15 +349,15 @@ class BBoxHelper():
             # YSortedList = sorted(lines,key=lambda o : o.BoundingBox[boxref].Y)
             # // the entries are now sorted ascending their Y axis
             regiony = 0.0
-            self.logger.debug("{1}|Region with {0} lines.".format(str(len(lines)),alignment))
+            bboxlogger.debug("{1}|Region with {0} lines.".format(str(len(lines)),alignment))
 
             for line in lines:
                 # //Top Left Y
                 ycurrent = line.BoundingBox[boxref].Y
-                # lowb=(regiony - (Ythresholdratio * self.ocrconfig.config[unit].ImageTextBoxingYThreshold))
+                # lowb=(regiony - (Ythresholdratio * bboxconfig.config[unit].ImageTextBoxingYThreshold))
                 lowb=regiony-(regiony*0.1)
-                highb=(regiony + (Ythresholdratio * self.ocrconfig.config[unit].ImageTextBoxingYThreshold))
-                self.logger.debug("{7}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.BoundingBox),str(line.Text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent < highb)),str(regiony),alignment))
+                highb=(regiony + (Ythresholdratio * bboxconfig.config[unit].ImageTextBoxingYThreshold))
+                bboxlogger.debug("{7}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.BoundingBox),str(line.Text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent < highb)),str(regiony),alignment))
 
                 if (regiony == 0.0):
                     prevline = line
@@ -385,15 +381,15 @@ class BBoxHelper():
             page=input_json
 
         inlines=[o for o in page.Lines if o.merged == False]
-        self.logger.debug("{1}|Input # lines {0}".format(len(inlines),str(page.Id)))
+        bboxlogger.debug("{1}|Input # lines {0}".format(len(inlines),str(page.Id)))
 
         # Go through potential Text Alignment : Left, Right and Centered.
         for alignment in Alignments:
-            self.logger.debug("{1}|Processing {0}".format(alignment,str(page.Id)))
+            bboxlogger.debug("{1}|Processing {0}".format(alignment,str(page.Id)))
             page.Lines = self.__processLineBoundingBoxes(page.Lines,alignment,page.Unit)
 
         outlines=[o for o in page.Lines if o.merged == False]
-        self.logger.debug("{1}|Output # lines {0}".format(len(outlines),str(page.Id)))
+        bboxlogger.debug("{1}|Output # lines {0}".format(len(outlines),str(page.Id)))
 
         if sortingAlgo is None:
             # Default Sorting Strategy 
@@ -404,10 +400,10 @@ class BBoxHelper():
                 YXSortedOutput=True
 
             if (YXSortedOutput):
-                self.logger.debug("{0}|Sorting by YX".format(str(page.Id)))
+                bboxlogger.debug("{0}|Sorting by YX".format(str(page.Id)))
                 sortedBlocks = sorted(outlines,key= lambda o: (o.BoundingBox[0].Y, o.XMedian))
             else:
-                self.logger.debug("{0}|Default sorting strategy".format(str(page.Id)))
+                bboxlogger.debug("{0}|Default sorting strategy".format(str(page.Id)))
                 sortedBlocks = sorted(outlines,key= lambda o: (o.BoundingBox[0].X, o.YMedian))
         else:
             sortedBlocks = sortingAlgo(page.Id,page.Width,page.Height,blocks=outlines)
@@ -417,17 +413,17 @@ class BBoxHelper():
         for i,block in enumerate(sortedBlocks):
             # block.blockid = i
             if boxSeparator is None:
-                if self.ocrconfig.blockTag:
-                    newtext+=self.ocrconfig.blockTag[0]
+                if bboxconfig.blockTag:
+                    newtext+=bboxconfig.blockTag[0]
             else:
                 newtext+=boxSeparator[0]
             # Normalized to Rectangles? 
-            if self.ocrconfig.rectangleNormalization:
+            if bboxconfig.rectangleNormalization:
                 BBoxUtils.makeRectangle(block)
             newtext+=block.Text
             if boxSeparator is None:
-                if self.ocrconfig.blockTag:
-                    newtext+=self.ocrconfig.blockTag[1]
+                if bboxconfig.blockTag:
+                    newtext+=bboxconfig.blockTag[1]
                 else:
                     # newtext+=os.linesep
                     newtext+='\r\n'

@@ -61,7 +61,9 @@ class BBOXConfig():
             ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
         return cls(rectangleNormalization=data["rectangleNormalization"],pageTag=data["pageTag"],blockTag=data["blockTag"],paragraphTag=data["paragraphTag"],sentenceTag=data["sentenceTag"],config=ocfg)
 
-
+#
+# Bounding Boxes Utils class
+#
 
 class BBoxUtils():
 
@@ -142,6 +144,9 @@ class BBoxUtils():
             cv2.polylines(image,[pts],True,(255,255,255))
         return image
 
+#
+# Bounding Boxes Sorting class
+#
 
 class BBoxSort():
 
