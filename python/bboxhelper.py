@@ -136,8 +136,16 @@ class BBOXNormalizedLine():
             x = array[6]
             y = array[7]
             points.append(BBOXPoint(x, y))
+            # Make sure the X of the line is consistent to the first word of the same. 
+            if len(data['words'])>0:
+                points[0].X = data['words'][0]["boundingBox"][0]+1
+                points[3].X = data['words'][0]["boundingBox"][6]+1
         else:
             points = list(map(BBOXPoint.from_azure, array))
+            if len(data['words'])>0:
+                points[0].X = data['words'][0]["boundingBox"][0].X+1
+                points[3].X = data['words'][0]["boundingBox"][3].X+1
+          
         wordheights=[]
         # Check Line in anomaly
         for wordbox in data['words']:
@@ -162,9 +170,10 @@ class BBOXNormalizedLine():
                         if symbol.property.detected_break.type in [1,2,3]:
                             block_text+=" "
                         elif symbol.property.detected_break.type==5:
-                            block_text+='\r\n'
+                            block_text+=" "
+                            # block_text+='\r\n'
                             # EOL_SURE_SPACE
-        return cls(Idx=index,BoundingBox=points,Text=block_text)
+        return cls(Idx=index,BoundingBox=points,Text=block_text.strip())
 
 class BBOXPageLayout():
     def __init__(self, Id:int = 0,ClockwiseOrientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None):
@@ -199,10 +208,6 @@ class BBOXOCRResponse():
     def from_google(cls, document):
         pages = list(map(BBOXPageLayout.from_google,document.pages))
         return cls(status="success",original_text=document.text,recognitionResults=pages)
-    # @classmethod
-    # def from_googlejsonstring(cls, data):
-    #     object = json.loads(data)
-    #     return cls.from_azure(object)
 
 # Constants
 LeftAlignment="LeftAlignment"
