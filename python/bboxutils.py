@@ -19,6 +19,49 @@ import numpy as np
 import requests
 from PIL import Image, ImageDraw
 
+#
+# Bounding Boxes Config Classes
+#
+class BBOXConfigEntryThreshold():
+    def __init__(self,Xthresholdratio,Ythresholdratio):
+        self.Xthresholdratio=Xthresholdratio
+        self.Ythresholdratio=Ythresholdratio
+    @classmethod
+    def from_json(cls, data):
+        return cls(**data)
+
+class BBOXConfigEntry():
+    def __init__(self,ImageTextBoxingXThreshold,ImageTextBoxingYThreshold,ImageTextBoxingBulletListAdjustment,GoogleLineBreakThresholdInPixel,Thresholds={}):
+        self.ImageTextBoxingXThreshold=ImageTextBoxingXThreshold
+        self.ImageTextBoxingYThreshold=ImageTextBoxingYThreshold
+        self.ImageTextBoxingBulletListAdjustment=ImageTextBoxingBulletListAdjustment
+        self.GoogleLineBreakThresholdInPixel=GoogleLineBreakThresholdInPixel
+        self.Thresholds=Thresholds
+    @classmethod
+    def from_json(cls, data):
+        obj={}
+        Thresholds=data["Thresholds"]
+        for key in Thresholds:
+            obj[key]=BBOXConfigEntryThreshold.from_json(Thresholds[key])
+        return cls(data["ImageTextBoxingXThreshold"],data["ImageTextBoxingYThreshold"],data["ImageTextBoxingBulletListAdjustment"],data["GoogleLineBreakThresholdInPixel"],obj)
+
+class BBOXConfig():
+    def __init__(self,rectangleNormalization,pageTag:None,blockTag:None,paragraphTag:None,sentenceTag:None,config={}):
+        self.config=config
+        self.rectangleNormalization=rectangleNormalization
+        self.pageTag = pageTag
+        self.blockTag = blockTag
+        self.paragraphTag = paragraphTag
+        self.sentenceTag = sentenceTag
+    @classmethod
+    def from_json(cls, data):
+        ocfg={}
+        cfgs=data["config"]
+        for key in cfgs:
+            ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
+        return cls(rectangleNormalization=data["rectangleNormalization"],pageTag=data["pageTag"],blockTag=data["blockTag"],paragraphTag=data["paragraphTag"],sentenceTag=data["sentenceTag"],config=ocfg)
+
+
 
 class BBoxUtils():
 
@@ -143,16 +186,6 @@ class BBoxSort():
         lineContours=cls.__clusterBlocks(img,blocks)
         # sort list on line number,  x value and contour index
         contours_sorted = sorted(lineContours,key= lambda o: o.blockid)
-
-        # write blockid index on image
-        # for i, block in enumerate(contours_sorted):
-        #     # line, xpos, cnt_index = cnt
-        #     cv2.putText(img,str(round(block.blockid,2)),(int(block.XMedian), int(block.YMedian)),cv2.FONT_HERSHEY_SIMPLEX,1,(127),2,cv2.LINE_AA)
-
-        # show image
-        # cv2.imshow('Img 2',img)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
 
         return contours_sorted
 
