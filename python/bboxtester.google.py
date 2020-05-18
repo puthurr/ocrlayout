@@ -2,7 +2,7 @@ import io
 import os
 import os.path
 import json
-from PIL import Image,ImageDraw
+from PIL import Image,ImageDraw, ImageFont
 from enum import Enum
 
 # Imports the Google Cloud client library
@@ -53,10 +53,13 @@ def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
                 bound.BoundingBox[2].X+padding, bound.BoundingBox[2].Y+padding,
                 bound.BoundingBox[3].X+padding, bound.BoundingBox[3].Y+padding], 
                 outline=color)
+            if bound.blockid>0.0:
+                font = ImageFont.load_default()
+                draw.text((bound.XMedian, bound.YMedian),str(round(bound.blockid,4)),fill ="red",font=font)
     return image
 
 
-def google_document_text_detection(filter:None):
+def google_document_text_detection(filter:None,callOCR=True):
     """Google document text detection. 
     This will recognize text of the given image using the Google Vision API.
     """
@@ -129,4 +132,4 @@ if __name__ == "__main__":
     import os
     if not os.path.exists(RESULTS_FOLDER):
         os.makedirs(RESULTS_FOLDER)
-    google_document_text_detection("image")
+    google_document_text_detection("scan1")
