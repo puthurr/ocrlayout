@@ -1,121 +1,128 @@
-
 ## Simple page layout
-
 ![Screenshot](img/scan1.png)
 
-## Context
-
-The above image is simple, it contains blocks of Text and countries references well separated. 
+The above image is a simple scanned image from a PDF. 
 
 You will see that some OCR engines will clearly expose their line processing while other would do a better raw output. 
 
 Let's dive in each OCR Engine showing you how BBOXHelper helps increasing the coherence of the textual output. 
-
 ## Azure 
-
+The below image represents the raw Azure OCR output where we drew each line of text bounding boxes. 
 ![Screenshot](img/scan1.azure.png)
 
 ### Azure Raw Text ouput
+The below output is not sorted in any just taken as-is from Azure Computer Vision response. 
 ```
-Fossil evidence
-AFRICA
-of the Triassic
-land reptile
-INDIA
-Lystrosaurus.
-SOUTH AMERICA
-AUSTRALIA
-ANTARCTICA
-Fossil remains of
-Cynognathus, a
-Fossils of the fern
-Triassic land reptile
-Glossopteris found
-approximately
-Fossil remains of the
-in all of the southern
-3 m long.
-freshwater reptile
-continents, show that
-Mesosaurus
-they were once joined.
+DNV GL ENERGY TRANSITION OUTLOOK - OIL AND GAS
+1. EXECUTIVE SUMMARY
+The energy transition will be characterized by many sub-transitions
+in the next three decades. Based on the DNV GL model of the
+world energy system, we forecast that global final energy demand
+will flatten at 430 exajoules (EJ) from 2030 onwards (7% higher
+than 2015), reflecting accelerating improvement in global energy
+efficiency, driven largely by the electrification of the world's energy
+system and an increased share of renewables.
+Oil and gas will play a very important role in the
+The stage is set for gas to become the world's
+energy mix throughout our forecasting period.
+Although we expect renewable energy sources to
+primary energy source towards 2050, and the last of
+take an increasing share of this mix, we forecast oil
+the fossil fuels to experience peak demand, which
+and gas to account for 44% of the world's primary
+will occur in 2035 according to our model. Gas can
+play a central role in supporting energy security
+energy supply in 2050, down from 53% today.
+Investment will be needed to add new oil and gas
+alongside variable renewables during the transition.
+production capacity, and to operate existing assets
+There are opportunities to improve its carbon
+footprint by curtailing methane emissions from its
+safely and sustainably over this period, to deliver
+output levels that can meet predicted demand.
+value chain and through improving the economics
+of large-scale carbon capture and storage (CCS) for
+gas-fuelled power generation. We expect demand
+for oil to be at its maximum in 2022 and the high
+point for coal has already passed.
+The oil and gas industry will
+play a very important role in
+the energy mix throughout
+our forecasting period
 ```
-We can clearly see that the lines of text are processed in a certain order in Azure Computer Vision adding the noise of the continents in between "sentences".
 
-### After BBoxing... 
+Key challenge here is the 2-column section where using the Raw output phrases aren't consistent with the actual visual. 
 
+```
+Oil and gas will play a very important role in the
+The stage is set for gas to become the world's
+```
+
+So we need to have the 2-columns text clearly isolated from each other but sequential. You would read column One first then continue to read on column 2. 
+
+### Azure BBoxing... 
+Boxes are drawn on top of the original image. The numbers in red reprensent the blockid we use to sort the final boxes. See our [sorting](/sorting) section for more details. 
 ![Screenshot](img/scan1.azure.bbox.png)
-
-#### Azure text output
+#### Azure BBoxing text output
 ```
-Fossil evidence of the Triassic land reptile Lystrosaurus.
-AFRICA
-INDIA
-SOUTH AMERICA
-AUSTRALIA
-ANTARCTICA
-Fossil remains of
-Cynognathus, a Triassic land reptile approximately 3 m long.
-Fossils of the fern Glossopteris found in all of the southern continents, show that they were once joined.
-Fossil remains of the freshwater reptile Mesosaurus
+DNV GL ENERGY TRANSITION OUTLOOK - OIL AND GAS
+1. EXECUTIVE SUMMARY
+The energy transition will be characterized by many sub-transitions in the next three decades. Based on the DNV GL model of the world energy system, we forecast that global final energy demand will flatten at 430 exajoules (EJ) from 2030 onwards (7% higher than 2015), reflecting accelerating improvement in global energy efficiency, driven largely by the electrification of the world's energy system and an increased share of renewables.
+Oil and gas will play a very important role in the energy mix throughout our forecasting period. Although we expect renewable energy sources to take an increasing share of this mix, we forecast oil and gas to account for 44% of the world's primary energy supply in 2050, down from 53% today. Investment will be needed to add new oil and gas production capacity, and to operate existing assets safely and sustainably over this period, to deliver output levels that can meet predicted demand.
+The stage is set for gas to become the world's primary energy source towards 2050, and the last of the fossil fuels to experience peak demand, which will occur in 2035 according to our model. Gas can play a central role in supporting energy security alongside variable renewables during the transition. There are opportunities to improve its carbon footprint by curtailing methane emissions from its value chain and through improving the economics of large-scale carbon capture and storage (CCS) for gas-fuelled power generation. We expect demand for oil to be at its maximum in 2022 and the high point for coal has already passed.
+The oil and gas industry will play a very important role in the energy mix throughout our forecasting period
 ```
-
-
 
 ## Google 
+The below image represents the raw Google OCR output where we drew each line of text bounding boxes. Yellow colored are the words, red is for paragraphs and blue are for the blocks. See [Google Ocr](/google) for more details.
 
 ![Screenshot](img/scan1.google.png)
-
-### Google Raw Text output
+### Google Raw text output (block level)
 ```
-AFRICA
-Ra
-Fossil evidence
-of the Triassic
-l and reptile
-Zystrosaurus
-INDIA
-SOUTH AMERICA
-AUSTRALIA
-ANTARCTICA
-A
-Fossil remains of
-Cynognathus, a
-Triassic land reptile
-approximately
-3 m long
-Fossil remains of the
-freshwater reptile
-Mesosaurus
-Fossils of the fern
-Glossopteris found
-in all of the southem
-continents, show that
-they were once joined
+DNV GL ENERGY TRANSITION OUTLOOK - OIL AND GAS
+1. EXECUTIVE SUMMARY
+The energy transition will be characterized by many sub-transitions
+in the next three decades. Based on the DNV GL model of the
+world energy system, we forecast that global final energy demand
+will flatten at 430 exajoules (EJ) from 2030 onwards (7% higher
+than 2015), reflecting accelerating improvement in global energy
+efficiency, driven largely by the electrification of the world's energy
+system and an increased share of renewables.
+Oil and gas will play a very important role in the The stage is set for gas to become the world's
+energy mix throughoutour forecasting period. primary energy source towards 2050, and the last of
+Although we expect renewable energy sources to the fossil fuels to experience peak demand, which
+take an increasing share of this mix, we forecastoil will occur in 2035 according to our model. Gas can
+and gas to account for 44% of the world's primary play a central role in supporting energy security
+energy supply in 2050. down from 53% today. alongside variable renewables during the transition.
+Investment will be needed to add new oil and gas There are opportunities to improve its carbon
+production capacity, and to operate existing assets footprint by curtailing methane emissions from its
+safely and sustainably over this period, to deliver value chain and through improving the economics
+output levels that can meet predicted demand. of large-scale carbon capture and storage (CCS) for
+gas-fuelled power generation. We expect demand
+for oil to be at its maximum in 2022 and the high
+point for coal has already passed.
+6
+The oil and gas industry will
+play a very important role in
+the energy mix throughout
+our forecasting period
+8
 ```
-Google CV here does a better job in ordering the output text at first glance as it has the concept of blocks paragraphs. 
 
-### After BBoxing 
-
+### Google BBoxing 
+Boxes are drawn on the original image. The numbers in red reprensent the blockid we use to sort the final boxes. See our [sorting](/sorting) section for more details. 
 ![Screenshot](img/scan1.google.bbox.png)
-
-#### From Google output
+#### Google BBoxing output
 ```
-SOUTH AMERICA
-A
-Fossil remains of Cynognathus, a Triassic land reptile approximately 3 m long
-AFRICA
-Fossil remains of the freshwater reptile Mesosaurus
-ANTARCTICA
-INDIA
-Ra
-Fossils of the fern Glossopteris found in all of the southem continents, show that they were once joined
-AUSTRALIA
-Fossil evidence
-of the Triassic l and reptile
-Zystrosaurus
+8
+DNV GL ENERGY TRANSITION OUTLOOK - OIL AND GAS
+1. EXECUTIVE SUMMARY
+The energy transition will be characterized by many sub-transitions in the next three decades. Based on the DNV GL model of the world energy system, we forecast that global final energy demand will flatten at 430 exajoules (EJ) from 2030 onwards (7% higher than 2015), reflecting accelerating improvement in global energy efficiency, driven largely by the electrification of the world's energy system and an increased share of renewables.
+Oil and gas will play a very important role in the  energy mix throughoutour forecasting period.  Although we expect renewable energy sources to  take an increasing share of this mix, we forecastoil  and gas to account for 44% of the world's primary  energy supply in 2050. down from 53% today.  Investment will be needed to add new oil and gas  production capacity, and to operate existing assets  safely and sustainably over this period, to deliver  output levels that can meet predicted demand. 
+The stage is set for gas to become the world's primary energy source towards 2050, and the last of the fossil fuels to experience peak demand, which will occur in 2035 according to our model. Gas can play a central role in supporting energy security alongside variable renewables during the transition. There are opportunities to improve its carbon footprint by curtailing methane emissions from its value chain and through improving the economics of large-scale carbon capture and storage (CCS) for gas-fuelled power generation. We expect demand for oil to be at its maximum in 2022 and the high point for coal has already passed.
+6
+The oil and gas industry will play a very important role in the energy mix throughout our forecasting period
 ```
 ## Conclusion
 
-With this simple example we can see that both outputs are more aligned, while there is still some dependency on each OCR engine.  
-
+In this example we could see that BBoxHelper brought the concept of columns of text to get us better textual output. Besides key difference between the OCR engines, we now have a consistent output. 

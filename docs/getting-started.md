@@ -90,4 +90,17 @@ document = response.full_text_annotation
 bboxresponse=BBoxHelper().processGoogleOCRResponse(document)
 ```
 
-## Suggestions
+
+### Sample scripts Output
+
+Each Sample script will output 
+
+Azure Annotated Image where we draw the lines its OCR 
+Azure OCR JSON 
+Azure OCR Text (textual information)
+
+Google Annotated Image where we draw the lines its OCR 
+Google OCR Text (textual information)
+
+Those outputs allow you to evaluate the different OCR output visually. 
+

@@ -4,6 +4,8 @@ site_author: 'Nicolas Uthurriague'
 nav:
   - Home: index.md
   - 'Getting Started': getting-started.md
+  - 'Azure OCR': azure.md
+  - 'Google OCR': google.md
   - 'Sorting Strategy': sorting.md
   - Examples:
     - 'Simple Infographic': examples/infography1.md
@@ -11,6 +13,7 @@ nav:
     - 'Simple page Layout': examples/scan1.md
     - 'Common page Layout': examples/scan6.md
     - 'Complex page Layout': examples/scan2.md
+  - 'Known Limitations': known-limitations.md
   - About:
     - License: about/license.md
 theme:
