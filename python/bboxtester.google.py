@@ -8,6 +8,7 @@ from enum import Enum
 # Imports the Google Cloud client library
 from google.cloud import vision
 from google.cloud.vision import types
+from google.protobuf import json_format
 
 from bboxhelper import BBOXOCRResponse,BBoxHelper
 
@@ -74,32 +75,37 @@ def google_document_text_detection(filter:None,callOCR=True):
         print("Image Name {}".format(filename))
         (imgname,imgext) = os.path.splitext(filename)
 
-        # Instantiates a Google Vision client
-        client = vision.ImageAnnotatorClient()
+        if callOCR:
+            # Instantiates a Google Vision client
+            client = vision.ImageAnnotatorClient()
 
-        with io.open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_file:
-            content = image_file.read()
+            with io.open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_file:
+                content = image_file.read()
 
-        image = types.Image(content=content)
+            image = types.Image(content=content)
 
-        response = client.document_text_detection(image=image)
-        document = response.full_text_annotation
+            response = client.document_text_detection(image=image)
 
-        # print("\tRecognized {} page(s)".format(len(image_analysis.output.recognition_results)))
+            with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.json"), 'w') as outfile:
+                outfile.write(json_format.MessageToJson(response))
 
-        # with open(os.path.join(RESULTS_FOLDER, filename+".azcv.batch_read.json"), 'w') as outfile:
-        #     outfile.write(image_analysis.response.content.decode("utf-8"))
-
-        with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.text.json"), 'w') as outfile:
-            outfile.write(document.text)
+            with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.text.json"), 'w') as outfile:
+                outfile.write(response.full_text_annotation.text)
+        else:
+            # Use local OCR cached response when available
+            with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.json"), 'r') as cachefile:
+                json_string = cachefile.read().replace('\n', '')
+            response = json_format.Parse(json_string, vision.types.AnnotateImageResponse())
 
         # Create BBOX OCR Response from Google's response object
-        bboxresponse=BBoxHelper().processGoogleOCRResponse(document,boxSeparator=["","\r\n"])
+        bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation,boxSeparator=["","\r\n"])
 
         with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.json"), 'w') as outfile:
             outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
-        with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.text.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.txt"), 'w') as outfile:
             outfile.write(bboxresponse.Text)
+
+        document = response.full_text_annotation
 
         bounds=[[],[],[],[],[],[]]
         for page in document.pages:
@@ -132,4 +138,4 @@ if __name__ == "__main__":
     import os
     if not os.path.exists(RESULTS_FOLDER):
         os.makedirs(RESULTS_FOLDER)
-    google_document_text_detection("scan1")
+    google_document_text_detection("scan2",callOCR=True)
