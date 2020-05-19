@@ -17,17 +17,17 @@ COMPUTERVISION_LOCATION="westeurope"
 ```
 
 ### Google 
-Refer to Google documentation to authenticate the Google Client : https://cloud.google.com/vision/docs/ocr#set-up-your-gcp-project-and-authentication
+Refer to Google documentation to authenticate the [Google Client](https://cloud.google.com/vision/docs/ocr#set-up-your-gcp-project-and-authentication)
 
 ## BBoxHelper - Run the Sample script(s) 
 
 Each supported OCR platform has a corresponding testing script 
 
-Under the project python directory,
+### Under the project python directory
 1. execute the **bboxtester.azure.py** for testing with Microsoft Azure Computer Vision OCR. 
 2. execute the **bboxtester.google.py** for testing with Google Computer Vision OCR. 
 
-Each sample script will
+### Each sample script will
 1. process all images located under the images script (one level of the python dir), 
 2. call the corresponding OCR service, 
 3. persist the raw ocr response on disk in the tests-results or the directory of your choice
@@ -36,7 +36,7 @@ Each sample script will
 6. persist the original image with the bouding boxes of the BBoxHelper OCR response .
 
 ### Changing the input and output directories used in the samples scripts
-```
+```python
 IMAGES_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../images")
 
@@ -50,7 +50,7 @@ RESULTS_FOLDER = os.path.join(os.path.dirname(
 #### For Azure 
 
 If you have the response object from client.get_read_operation_result() 
-```
+```python
 # Azure Computer Vision Call
 with open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_stream:
     job = client.batch_read_file_in_stream(
@@ -70,11 +70,11 @@ bboxresponse=BBoxHelper().processAzureOCRResponse(ocrresponse,sortingAlgo=BBoxSo
 The BBoxHelper().processAzureOCRResponse() method will accept a string, dict (JSON) or BBOXOCRResponse instance. 
 
 Passing a dict object (really if you want to)
-```
+```python
 bboxresponse=BBoxHelper().processAzureOCRResponse(json.loads(ocrresponse),sortingAlgo=BBoxSort.contoursSort)
 ```
 You can create an BBOXOCRResponse object and send it as is as well. This is usefull to draw the bounding boxes Before and After (see the sample script)
-```
+```python
 ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
 bboxresponse=BBoxHelper().processAzureOCRResponse(copy.deepcopy(ocrresponse),sortingAlgo=BBoxSort.contoursSort)
 ```
@@ -83,20 +83,18 @@ bboxresponse=BBoxHelper().processAzureOCRResponse(copy.deepcopy(ocrresponse),sor
 
 #### For Google
 
-```
+```python
 response = client.document_text_detection(image=image)
-document = response.full_text_annotation
 ...
-bboxresponse=BBoxHelper().processGoogleOCRResponse(document)
+bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation)
 ```
-
 
 ### Sample scripts Output
 
 Each Sample script will output 
 
-Azure Annotated Image where we draw the lines its OCR 
-Azure OCR JSON 
+- Azure Annotated Image where we draw the lines its OCR 
+- Azure OCR JSON 
 Azure OCR Text (textual information)
 
 Google Annotated Image where we draw the lines its OCR 

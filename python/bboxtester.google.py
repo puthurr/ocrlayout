@@ -89,7 +89,7 @@ def google_document_text_detection(filter:None,callOCR=True):
             with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.json"), 'w') as outfile:
                 outfile.write(json_format.MessageToJson(response))
 
-            with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.text.json"), 'w') as outfile:
+            with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.txt"), 'w') as outfile:
                 outfile.write(response.full_text_annotation.text)
         else:
             # Use local OCR cached response when available
@@ -138,4 +138,4 @@ if __name__ == "__main__":
     import os
     if not os.path.exists(RESULTS_FOLDER):
         os.makedirs(RESULTS_FOLDER)
-    google_document_text_detection("scan2",callOCR=True)
+    google_document_text_detection("scan",callOCR=True)

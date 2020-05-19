@@ -167,7 +167,6 @@ class BBOXPageLayout():
 
     @classmethod
     def from_google(cls, page):
-        # lines=[BBOXNormalizedLine.from_google(i,line) for i,line in enumerate(page.blocks)] 
         lines=[]
         line_counter=0
         line_text =""
