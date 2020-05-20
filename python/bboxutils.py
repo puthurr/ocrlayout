@@ -195,35 +195,51 @@ class BBoxSort():
         return contours_sorted
 
     @classmethod
-    def __findClusters(cls,img,axis=0):
-        # sum all rows
-        sumOfRows = np.sum(img, axis=axis)
+    def findClusters(cls,nparray,axis=0,gapthreshhold=1):
+        # sum all entries on a particular axis
+        sumAxis = np.sum(nparray, axis=axis)
         # loop the summed values
         startindex = 0
         clusters = []
         compVal = True
-        for i, val in enumerate(sumOfRows):
+        gaplength = 0
+        for i, val in enumerate(sumAxis):
             # logical test to detect change between 0 and > 0
             testVal = (val > 0)
             if testVal == compVal:
+                if startindex==0:
+                    startindex=i
                 # when the value changed to a 0, the previous rows
                 # contained contours, so add start/end index to list
                 if val == 0:
-                    clusters.append((startindex,i))
-                    # update startindex, invert logical test
+                    if gaplength >= gapthreshhold:
+                        clusters.append((startindex,i,gaplength))
+                    else:
+                        if len(clusters)>0:
+                            (start,end,gap)=clusters[-1]
+                            clusters[-1]=(start,i,gap)
+                        else:
+                            clusters.append((startindex,i,gaplength))
                     startindex = i+1
+                    gaplength=1
                 compVal = not compVal
+            else:
+                if val==0:
+                    gaplength+=1
+            if i == len(sumAxis):
+                clusters.append((startindex,i,gaplength))
+
         return clusters
 
     @classmethod
     def __clusterBlocks(cls,img,blocks,axis=0):
         # try to identify clusters of blocks
-        clusters=cls.__findClusters(img,axis)
+        clusters=cls.findClusters(img,axis)
 
         # if there is only single cluster then we shall revert to the opposite axis strategy
         if len(clusters)==1:
             axis=np.absolute(axis-1)
-            clusters=cls.__findClusters(img,axis)
+            clusters=cls.findClusters(img,axis)
 
         lineContours = []
         # loop contours, find the boundingrect,
