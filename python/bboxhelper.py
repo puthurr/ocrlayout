@@ -171,22 +171,50 @@ class BBOXPageLayout():
         line_counter=0
         line_text =""
         line_boxes=[]
+        bboxlogger.debug("Google|Page shape (Height,Width) ({0},{1})".format(page.height,page.width))
         # Create the concept of lines for Google ocr response. 
         for idb, block in enumerate(page.blocks):
             for paragraph in block.paragraphs:
-                for word in paragraph.words:
-                    # Test if the enxt word is within range of the previous one. 
-                    # Google OCR doesn't split nicely text set in columns.
+                pagearray = np.zeros((page.height,page.width))
+                # parray=page[paragraph.bounding_box.vertices[0].y:paragraph.bounding_box.vertices[2].y,paragraph.bounding_box.vertices[0].x:paragraph.bounding_box.vertices[2].x]
+                bboxlogger.debug("Google|Paragraph {0} of {1} words".format(str(idb),str(len(paragraph.words))))
+                for widx, word in enumerate(paragraph.words):
+                    # Put the word presence in the paragraph matrix 
+                    low_y=word.bounding_box.vertices[0].y-1
+                    high_y=word.bounding_box.vertices[2].y
+                    low_x=word.bounding_box.vertices[0].x-1
+                    high_x=word.bounding_box.vertices[2].x
+                    # the Min,Max allows us to handle vertical words. 
+                    pagearray[min(low_y,high_y):max(low_y,high_y),min(low_x,high_x):max(low_x,high_x)]=widx+1
+
+                columns=BBoxSort.findClusters(pagearray,axis=0,gapthreshhold=bboxconfig.config["pixel"].GoogleLineBreakThresholdInPixel)
+
+                # Assign the first cluster as current
+                currentTextColumn = columns[0]
+
+                for widx, word in enumerate(paragraph.words):
+                    if len(columns)==1:
+                        foundTextColumn = columns[0]
+                    else:                       
+                        # Find the word cluster
+                        for cidx,column in enumerate(columns):
+                            if word.bounding_box.vertices[0].x >= column[0] and word.bounding_box.vertices[0].x <= column[1]:
+                                foundTextColumn = column
+                                bboxlogger.debug("Google|Word Idx:{0} X:{1} in Cluster {2}".format(widx,word.bounding_box.vertices[0].x,column))
+
+                    # Line break on text columns change.
                     if len(line_boxes)>0:
-                        xdiff=(word.bounding_box.vertices[0].x - line_boxes[-1][1].x)
-                        if xdiff > bboxconfig.config["pixel"].GoogleLineBreakThresholdInPixel:
-                            bboxlogger.debug("Google|Line Break {0}| {1} {2}".format(str(xdiff),str(line_counter),line_text))
-                            # Line break
-                            line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
-                            lines.append(line)
-                            line_text=""
-                            line_counter+=1
-                            line_boxes.clear()
+                        if foundTextColumn != currentTextColumn:
+                            # xdiff=(word.bounding_box.vertices[0].x - line_boxes[-1][1].x)
+                            # if xdiff > bboxconfig.config["pixel"].GoogleLineBreakThresholdInPixel:
+                                bboxlogger.debug("Google|Detected Cluster Break current {0} found {1} | {2} {3}".format(currentTextColumn,foundTextColumn,str(line_counter),line_text))
+                                # Line break
+                                line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
+                                lines.append(line)
+                                line_text=""
+                                line_counter+=1
+                                line_boxes.clear()
+                    currentTextColumn=foundTextColumn
 
                     line_boxes.append(word.bounding_box.vertices)
                     for symbol in word.symbols:
@@ -195,7 +223,7 @@ class BBOXPageLayout():
                             if symbol.property.detected_break.type in [1,2]:
                                 line_text+=" "
                             elif symbol.property.detected_break.type in [3,5]:
-                                bboxlogger.debug("Google|Detected Break {0}| {1} {2}".format(str(symbol.property.detected_break.type),str(line_counter),line_text))
+                                bboxlogger.debug("Google|Detected Line Break {0}| {1} {2}".format(str(symbol.property.detected_break.type),str(line_counter),line_text))
                                 # Line Break
                                 line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
                                 lines.append(line)

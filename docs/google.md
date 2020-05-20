@@ -81,34 +81,9 @@ class BBOXPageLayout():
         for idb, block in enumerate(page.blocks):
             for paragraph in block.paragraphs:
                 for word in paragraph.words:
-                    # Test if the enxt word is within range of the previous one. 
-                    # Google OCR doesn't split nicely text set in columns.
-                    if len(line_boxes)>0:
-                        xdiff=(word.bounding_box.vertices[0].x - line_boxes[-1][1].x)
-                        if xdiff > bboxconfig.config["pixel"].GoogleLineBreakThresholdInPixel:
-                            bboxlogger.debug("Google|Line Break {0}| {1} {2}".format(str(xdiff),str(line_counter),line_text))
-                            # Line break
-                            line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
-                            lines.append(line)
-                            line_text=""
-                            line_counter+=1
-                            line_boxes.clear()
-
-                    line_boxes.append(word.bounding_box.vertices)
+                    # Line Break Logic 
                     for symbol in word.symbols:
-                        line_text+=symbol.text
-                        if symbol.property.detected_break:
-                            if symbol.property.detected_break.type in [1,2]:
-                                line_text+=" "
-                            elif symbol.property.detected_break.type in [3,5]:
-                                bboxlogger.debug("Google|Detected Break {0}| {1} {2}".format(str(symbol.property.detected_break.type),str(line_counter),line_text))
-                                # Line Break
-                                line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
-                                lines.append(line)
-                                line_text=""
-                                line_counter+=1
-                                line_boxes.clear()
-
+                        # Line Break Logic based on symbol 
         return cls(Id=1,Width=page.width,Height=page.height,Lines=lines)
 
 class BBOXOCRResponse():
