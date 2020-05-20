@@ -100,6 +100,10 @@ def google_document_text_detection(filter:None,callOCR=True):
         # Create BBOX OCR Response from Google's response object
         bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation,boxSeparator=["","\r\n"])
 
+        converted=BBOXOCRResponse.from_google(response.full_text_annotation)
+        with open(os.path.join(RESULTS_FOLDER, imgname+".google.converted.json"), 'w') as outfile:
+            outfile.write(json.dumps(converted.__dict__, default = lambda o: o.__dict__, indent=4))
+
         with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.json"), 'w') as outfile:
             outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
         with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.txt"), 'w') as outfile:
@@ -138,4 +142,4 @@ if __name__ == "__main__":
     import os
     if not os.path.exists(RESULTS_FOLDER):
         os.makedirs(RESULTS_FOLDER)
-    google_document_text_detection("scan",callOCR=True)
+    google_document_text_detection("scan",callOCR=False)
