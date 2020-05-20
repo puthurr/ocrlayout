@@ -4,8 +4,8 @@ import copy
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from msrest.authentication import CognitiveServicesCredentials
 from PIL import Image, ImageDraw, ImageFont
-from bboxutils import BBoxSort
-from bboxhelper import BBoxHelper,BBOXOCRResponse
+from ocrlayout_pkg.ocrlayout.bboxutils import BBoxSort
+from ocrlayout_pkg.ocrlayout.bboxhelper import BBoxHelper,BBOXOCRResponse
 import cv2
 
 SUBSCRIPTION_KEY_ENV_NAME = os.environ.get("COMPUTERVISION_SUBSCRIPTION_KEY", None)

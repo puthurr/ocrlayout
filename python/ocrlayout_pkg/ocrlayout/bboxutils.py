@@ -46,25 +46,33 @@ class BBOXConfigEntry():
         return cls(data["ImageTextBoxingXThreshold"],data["ImageTextBoxingYThreshold"],data["ImageTextBoxingBulletListAdjustment"],data["GoogleLineBreakThresholdInPixel"],obj)
 
 class BBOXConfig():
-    def __init__(self,rectangleNormalization,pageTag:None,blockTag:None,paragraphTag:None,sentenceTag:None,config={}):
+    def __init__(self,rectangleNormalization,config={}):
         self.config=config
         self.rectangleNormalization=rectangleNormalization
-        self.pageTag = pageTag
-        self.blockTag = blockTag
-        self.paragraphTag = paragraphTag
-        self.sentenceTag = sentenceTag
     @classmethod
     def from_json(cls, data):
         ocfg={}
         cfgs=data["config"]
         for key in cfgs:
             ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
-        return cls(rectangleNormalization=data["rectangleNormalization"],pageTag=data["pageTag"],blockTag=data["blockTag"],paragraphTag=data["paragraphTag"],sentenceTag=data["sentenceTag"],config=ocfg)
+        return cls(rectangleNormalization=data["rectangleNormalization"],config=ocfg)
+
+#
+# Annotation Class
+#
+class BBOXAnnotate():
+    def __init__(self,pageTag:None,blockTag:None,paragraphTag:None,sentenceTag:None):
+        self.pageTag = pageTag
+        self.blockTag = blockTag
+        self.paragraphTag = paragraphTag
+        self.sentenceTag = sentenceTag
+    @classmethod
+    def from_json(cls, data):
+        return cls(pageTag=data["pageTag"],blockTag=data["blockTag"],paragraphTag=data["paragraphTag"],sentenceTag=data["sentenceTag"])
 
 #
 # Bounding Boxes Utils class
 #
-
 class BBoxUtils():
 
     @classmethod
@@ -147,7 +155,6 @@ class BBoxUtils():
 #
 # Bounding Boxes Sorting class
 #
-
 class BBoxSort():
 
     # Define the multiple Sorting strategy 

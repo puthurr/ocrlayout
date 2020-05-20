@@ -11,13 +11,13 @@ import time
 import uuid
 from datetime import datetime
 from os import path
-from pathlib import Path
+
 from typing import List
 
 import numpy as np
 import requests
 
-from bboxutils import BBoxUtils, BBoxSort, BBOXConfig
+from .bboxutils import BBoxUtils, BBoxSort, BBOXConfig, BBOXAnnotate
 
 # Constants
 LeftAlignment="LeftAlignment"
@@ -26,14 +26,20 @@ CenteredAlignment="CenteredAlignment"
 
 Alignments = [LeftAlignment,RightAlignment,CenteredAlignment]
 
-# Load configuration
-json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.json")
+# Load deafult Configuration
+json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config/config.json")
 with open(json_file_path) as json_file:
     bboxconfig=BBOXConfig.from_json(json.loads(json_file.read()))
 
-log_file_path = path.join(path.dirname(path.abspath(__file__)), 'logging.conf')
+# Load Logging default configuration 
+log_file_path = path.join(path.dirname(path.abspath(__file__)), 'config/logging.conf')
 logging.config.fileConfig(log_file_path)
 bboxlogger = logging.getLogger('bboxhelper')  # get a logger
+
+# Load Default HTML Annotations
+json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config/annotations.json")
+with open(json_file_path) as json_file:
+    bboxannotate=BBOXAnnotate.from_json(json.loads(json_file.read()))
 
 #
 # Bounding Boxes OCR Classes
@@ -250,6 +256,18 @@ class BBOXOCRResponse():
 
 class BBoxHelper():
 
+    # Support to use a custom configuration file.
+    def __init__(self, customcfgfilepath=None, customlogfilepath=None, annotate=False, annotationconfig=None):
+        if customcfgfilepath:
+            with open(customcfgfilepath) as json_file:
+                bboxconfig=BBOXConfig.from_json(json.loads(json_file.read()))
+        if customlogfilepath:
+            logging.config.fileConfig(customlogfilepath)
+            bboxlogger = logging.getLogger('bboxhelper')
+        self.annotate=annotate
+        if annotationconfig:
+            bboxconfig=BBOXAnnotate.from_json(json.loads(annotationconfig))
+
     def processAzureOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None):
         """ processAzureOCRResponse method
             Process an OCR Response input from Azure and returns a new BBox format OCR response.
@@ -281,8 +299,8 @@ class BBoxHelper():
         # Rotate the BBox of each page based on its corresponding orientation
         for item in response.pages:
             bboxlogger.debug("Processing Page {}".format(str(item.Id)))
-            if bboxconfig.pageTag:
-                newtext+=bboxconfig.pageTag[0]
+            if self.annotate and bboxannotate.pageTag:
+                newtext+=bboxannotate.pageTag[0]
             rotation = round(item.ClockwiseOrientation,0)
             bboxlogger.debug("Orientation {}".format(str(rotation)))
             # TODO Do the Math for clockwise orientation
@@ -305,8 +323,8 @@ class BBoxHelper():
 
             newtext += self.processOCRPageLayout(item, sortingAlgo, boxSeparator).Text
 
-            if bboxconfig.pageTag:
-                newtext+=bboxconfig.pageTag[1]
+            if self.annotate and bboxannotate.pageTag:
+                newtext+=bboxannotate.pageTag[1]
             else:
                 # Default page separator
                 newtext += '\r\n'
@@ -440,8 +458,8 @@ class BBoxHelper():
         for i,block in enumerate(sortedBlocks):
             # block.blockid = i
             if boxSeparator is None:
-                if bboxconfig.blockTag:
-                    newtext+=bboxconfig.blockTag[0]
+                if self.annotate and bboxannotate.blockTag:
+                    newtext+=bboxannotate.blockTag[0]
             else:
                 newtext+=boxSeparator[0]
             # Normalized to Rectangles? 
@@ -449,8 +467,8 @@ class BBoxHelper():
                 BBoxUtils.makeRectangle(block)
             newtext+=block.Text
             if boxSeparator is None:
-                if bboxconfig.blockTag:
-                    newtext+=bboxconfig.blockTag[1]
+                if self.annotate and bboxannotate.blockTag:
+                    newtext+=bboxannotate.blockTag[1]
                 else:
                     # newtext+=os.linesep
                     newtext+='\r\n'

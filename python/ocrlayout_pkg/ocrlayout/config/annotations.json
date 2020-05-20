@@ -1,0 +1,6 @@
+{
+  "pageTag":["<div>","</div>"],
+  "blockTag":["<p>","</p>"],
+  "paragraphTag":["<p>","</p>"],
+  "sentenceTag":["<span>","</span>"]
+}

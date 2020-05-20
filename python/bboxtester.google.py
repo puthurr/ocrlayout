@@ -10,7 +10,7 @@ from google.cloud import vision
 from google.cloud.vision import types
 from google.protobuf import json_format
 
-from bboxhelper import BBOXOCRResponse,BBoxHelper
+from ocrlayout_pkg.ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
 
 IMAGES_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../images")

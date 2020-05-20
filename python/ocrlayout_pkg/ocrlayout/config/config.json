@@ -1,15 +1,11 @@
 {
   "rectangleNormalization":true,
-  "pageTag":["<div>","</div>"],
-  "blockTag":["<p>","</p>"],
-  "paragraphTag":["<p>","</p>"],
-  "sentenceTag":["<span>","</span>"],
   "config": {
     "pixel": {
       "ImageTextBoxingXThreshold": 6.0,
       "ImageTextBoxingYThreshold": 10.0,
       "ImageTextBoxingBulletListAdjustment": 20.0,
-      "GoogleLineBreakThresholdInPixel":12,
+      "GoogleLineBreakThresholdInPixel":10,
       "Thresholds": {
         "LeftAlignment": {
           "Xthresholdratio": 1.5,
