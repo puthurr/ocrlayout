@@ -11,12 +11,9 @@ import time
 import uuid
 from datetime import datetime
 from os import path
-from pathlib import Path
 from typing import List
-
 import cv2
 import numpy as np
-import requests
 from PIL import Image, ImageDraw
 
 #

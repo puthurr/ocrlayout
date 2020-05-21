@@ -2,10 +2,10 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 setuptools.setup(
-    name='ocrlayout-pkg-puthurr',  
-    version='0.1',
+    name='ocrlayout-pkg',  
+    version='0.1.5',
     author="Nicolas Uthurriague",
-    author_email="puthurr@gmail.com",
+    author_email="puthurr@hotmail.com",
     description="A Helper class to get more meaninful text out of common OCR outputs",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -24,5 +24,6 @@ setuptools.setup(
     "Operating System :: OS Independent",
     ],
     keywords='OCR ComputerVision Text',
-    python_requires='>=3.7'
+    python_requires='>=3.7',
+    install_requires=['numpy','Pillow>=7','opencv-contrib-python']
  )

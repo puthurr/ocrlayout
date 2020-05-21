@@ -11,13 +11,11 @@ import time
 import uuid
 from datetime import datetime
 from os import path
-
 from typing import List
 
 import numpy as np
-import requests
 
-from .bboxutils import BBoxUtils, BBoxSort, BBOXConfig, BBOXAnnotate
+from .bboxutils import BBOXAnnotate, BBOXConfig, BBoxSort, BBoxUtils
 
 # Constants
 LeftAlignment="LeftAlignment"
@@ -35,6 +33,7 @@ with open(json_file_path) as json_file:
 log_file_path = path.join(path.dirname(path.abspath(__file__)), 'config/logging.conf')
 logging.config.fileConfig(log_file_path)
 bboxlogger = logging.getLogger('bboxhelper')  # get a logger
+bboxlogger.setLevel(logging.INFO)
 
 # Load Default HTML Annotations
 json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config/annotations.json")
@@ -257,16 +256,20 @@ class BBOXOCRResponse():
 class BBoxHelper():
 
     # Support to use a custom configuration file.
-    def __init__(self, customcfgfilepath=None, customlogfilepath=None, annotate=False, annotationconfig=None):
+    def __init__(self, customcfgfilepath=None, customlogfilepath=None, annotate=False, annotationconfig=None,verbose=None):
+        global bboxlogger,bboxconfig,bboxannotate
         if customcfgfilepath:
             with open(customcfgfilepath) as json_file:
                 bboxconfig=BBOXConfig.from_json(json.loads(json_file.read()))
         if customlogfilepath:
             logging.config.fileConfig(customlogfilepath)
             bboxlogger = logging.getLogger('bboxhelper')
+        else:
+            if verbose:
+                bboxlogger.setLevel(logging.DEBUG)
         self.annotate=annotate
         if annotationconfig:
-            bboxconfig=BBOXAnnotate.from_json(json.loads(annotationconfig))
+            bboxannotate=BBOXAnnotate.from_json(json.loads(annotationconfig))
 
     def processAzureOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None):
         """ processAzureOCRResponse method
@@ -330,6 +333,7 @@ class BBoxHelper():
                 newtext += '\r\n'
 
         response.Text = str(newtext)
+
         return response
 
     def __processLineBoundingBoxes(self, lines, alignment, unit): 
