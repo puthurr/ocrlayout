@@ -4,6 +4,7 @@ import os.path
 import json
 from PIL import Image,ImageDraw, ImageFont
 from enum import Enum
+import logging
 
 # Imports the Google Cloud client library
 from google.cloud import vision
@@ -60,7 +61,7 @@ def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
     return image
 
 
-def google_document_text_detection(filter:None,callOCR=True):
+def google_document_text_detection(filter:None,callOCR=True,verbose=False):
     """Google document text detection. 
     This will recognize text of the given image using the Google Vision API.
     """
@@ -75,7 +76,13 @@ def google_document_text_detection(filter:None,callOCR=True):
         print("Image Name {}".format(filename))
         (imgname,imgext) = os.path.splitext(filename)
 
-        if callOCR:
+        # Check if we have a cached ocr response already for this provider
+        invokeOCR=callOCR
+        if not callOCR:
+            if not os.path.exists(os.path.join(RESULTS_FOLDER, imgname+".google.vision.json")):
+                invokeOCR=True
+
+        if invokeOCR:
             # Instantiates a Google Vision client
             client = vision.ImageAnnotatorClient()
 
@@ -98,7 +105,8 @@ def google_document_text_detection(filter:None,callOCR=True):
             response = json_format.Parse(json_string, vision.types.AnnotateImageResponse())
 
         # Create BBOX OCR Response from Google's response object
-        bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation,boxSeparator=["","\r\n"])
+        bboxresponse=BBoxHelper(verbose=verbose).processGoogleOCRResponse(response.full_text_annotation,boxSeparator=["","\r\n"])
+        print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
         converted=BBOXOCRResponse.from_google(response.full_text_annotation)
         with open(os.path.join(RESULTS_FOLDER, imgname+".google.converted.json"), 'w') as outfile:
@@ -135,11 +143,22 @@ def google_document_text_detection(filter:None,callOCR=True):
         draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
         save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".google.bbox"+imgext))
 
-
 if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
     import os
+    import argparse
+    parser = argparse.ArgumentParser(description='Process Google OCR outputs with boxed images')
+    parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke Google Online OCR Service')
+    parser.set_defaults(callocr=False)
+
+    parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level')
+    parser.set_defaults(verbose=False)
+
+    parser.add_argument('--filter',type=str,required=False,help='Filter images to process based on their filename',default="")
+    args = parser.parse_args()
+
     if not os.path.exists(RESULTS_FOLDER):
         os.makedirs(RESULTS_FOLDER)
-    google_document_text_detection("scan",callOCR=False)
+
+    google_document_text_detection(filter=args.filter,callOCR=args.callocr,verbose=args.verbose)

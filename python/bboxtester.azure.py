@@ -1,11 +1,14 @@
 import json
 import os.path
 import copy
+import logging
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from msrest.authentication import CognitiveServicesCredentials
 from PIL import Image, ImageDraw, ImageFont
-from ocrlayout_pkg.ocrlayout.bboxutils import BBoxSort
+
+# from ocrlayout.bboxhelper import BBoxHelper,BBOXOCRResponse
 from ocrlayout_pkg.ocrlayout.bboxhelper import BBoxHelper,BBOXOCRResponse
+
 import cv2
 
 SUBSCRIPTION_KEY_ENV_NAME = os.environ.get("COMPUTERVISION_SUBSCRIPTION_KEY", None)
@@ -39,7 +42,7 @@ def draw_boxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
                 draw.text((bound.XMedian, bound.YMedian),str(round(bound.blockid,4)),fill ="red",font=font)
     return image
 
-def batch_read_file_in_stream(filter=None,callOCR=True):
+def batch_read_file_in_stream(filter=None,callOCR=True,verbose=False):
     """RecognizeTextUsingBatchReadAPI.
     This will recognize text of the given image using the Batch Read API.
     """
@@ -48,7 +51,7 @@ def batch_read_file_in_stream(filter=None,callOCR=True):
         endpoint="https://" + COMPUTERVISION_LOCATION + ".api.cognitive.microsoft.com/",
         credentials=CognitiveServicesCredentials(SUBSCRIPTION_KEY_ENV_NAME)
     )
-    print("*** batch_read_file_in_stream ****")
+    print("*** batch_read_file_in_stream **** filter:"+str(filter)+" callOCR:"+str(callOCR))
     for filename in os.listdir(IMAGES_FOLDER):
         if filter:
             if filter not in filename:
@@ -56,7 +59,13 @@ def batch_read_file_in_stream(filter=None,callOCR=True):
         print("Image Name {}".format(filename))
         (imgname,imgext) = os.path.splitext(filename)
 
-        if callOCR:
+        # Check if we have a cached ocr response already for this provider
+        invokeOCR=callOCR
+        if not callOCR:
+            if not os.path.exists(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.json")):
+                invokeOCR=True
+
+        if invokeOCR:
             # Azure Computer Vision Call
             with open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_stream:
                 job = client.batch_read_file_in_stream(
@@ -87,7 +96,7 @@ def batch_read_file_in_stream(filter=None,callOCR=True):
                 ocrresponse = cachefile.read().replace('\n', '')
 
         # Create BBOX OCR Response from Azure CV string response
-        bboxresponse=BBoxHelper().processAzureOCRResponse(ocrresponse,boxSeparator=["","\r\n"])
+        bboxresponse=BBoxHelper(verbose=verbose).processAzureOCRResponse(ocrresponse,boxSeparator=["","\r\n"])
         print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
         # Write the improved ocr response
@@ -114,7 +123,18 @@ if __name__ == "__main__":
     import sys, os.path
     sys.path.append(os.path.abspath(os.path.join(__file__, "..", "..", "..")))
     import os
+    import argparse
+    parser = argparse.ArgumentParser(description='Process Azure OCR outputs with boxed images')
+    parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke Azure Online OCR Service')
+    parser.set_defaults(callocr=False)
+
+    parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level')
+    parser.set_defaults(verbose=False)
+
+    parser.add_argument('--filter',dest='filter',help='Filter images to process based on their filename')
+    args = parser.parse_args()
+
     if not os.path.exists(RESULTS_FOLDER):
         os.makedirs(RESULTS_FOLDER)
-    # batch_read_file_in_stream("scan",callOCR=False)
-    batch_read_file_in_stream("scan2",callOCR=False)
+
+    batch_read_file_in_stream(filter=args.filter,callOCR=args.callocr,verbose=args.verbose)

@@ -1,4 +1,4 @@
-# Ocr Layout Helper Project
+# Ocrlayout Library
 
 Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of lines. 
 
@@ -6,13 +6,13 @@ Provides the ability to get more meaninful text out of common OCR outputs. It ma
 
 While OCR processing images containing lots of textual information, it becomes relevant to assemble the generated text into meaninful lines of text combining related paragraphs or sentences. 
 
-Another way to see would be to cluster the lines of text based on their positions/corrdinates in the original content. 
+Another way to see would be to cluster the lines of text based on their positions/coordinates in the original content. 
 
 ## More meaningfull output for what? 
 - Text Analytics you may leverage any Text Analytics such as Key Phrases, Entities Extraction with more confidence of its outcome
 - Accessibility : Any infographic becomes alive, overcoming the alt text feature.
 - Modern browser Read Aloud feature : it becomes easier to build solutions to read aloud an image, increasing verbal narrative of visual information. 
-- Machine Translation : get more accurate MT output as you can retain context. 
+- Machine Translation : get more accurate MT output as you can retain more context. 
 - Sentences/Paragraph Classification : from scanned-base images i.e. contracts, having a more meaninful textual output allows you to classify it at a granular level in terms of risk, personal clause or conditions. 
 
 ## OCR Support
