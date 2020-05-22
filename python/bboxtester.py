@@ -24,7 +24,12 @@ from google.cloud.vision import types as google_types
 from google.protobuf import json_format
 
 # OCRLAYOUT Import
-from ocrlayout_pkg.ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
+try:
+    from ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
+    print("PyPI Package imported")
+except ImportError:
+    print("Local Package imported")
+    from ocrlayout_pkg.ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
 
 IMAGES_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../images")
