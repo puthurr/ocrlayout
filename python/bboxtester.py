@@ -258,7 +258,7 @@ if __name__ == "__main__":
     parser.add_argument('--imagesdir',type=str,required=False,help='Process all images contained in the given directory',default=IMAGES_FOLDER)
     parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="")
     parser.add_argument('--outputdir',type=str,required=False,help='Define where all outputs will be stored',default=RESULTS_FOLDER)
-    parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke Google Online OCR Service')
+    parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service')
     parser.set_defaults(callocr=False)
     parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level')
     parser.set_defaults(verbose=False)

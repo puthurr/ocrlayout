@@ -1,6 +1,6 @@
 # OcrLayout Library
 
-Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of lines. 
+Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of lines to rebuild a page layout to approximate human-reading experience.  
 
 ## Problem Statement
 
@@ -17,19 +17,21 @@ Another way to see would be to cluster the lines of text based on their position
 
 ### Ocr Output Support
 
-Today bboxhelper supports the original output of 
+Today bboxhelper supports the output of 
 
 * Azure Batch Read API response. 
 https://docs.microsoft.com/en-us/azure/cognitive-services/computer-vision/concept-recognizing-text#read-api
 
-**Azure Computer Vision SDK Python Sample**
+* Azure Computer Vision SDK Python Sample
 https://github.com/Azure/azure-sdk-for-python/tree/76a0d91c32a79561a7d5666e421908e7c4cffc6a/sdk/cognitiveservices/azure-cognitiveservices-vision-computervision
+
+and 
 
 * Google Vision API Detect Text
 https://cloud.google.com/vision/docs/ocr
 https://cloud.google.com/vision/docs/ocr#vision_text_detection-python
 
-**Google Vision Python Sample**
+* Google Vision Python Sample
 https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/vision/cloud-client/document_text/doctext.py
 
 ## BBoxHelper - Get Started

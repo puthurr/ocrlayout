@@ -5,6 +5,7 @@
 python3 setup.py sdist bdist_wheel
 ```
 # Local Install
+
 ## Install the ocrlayout pkg locally 
 ```
 python3 -m pip install dist/ocrlayout_pkg_puthurr-0.1-py3-none-any.whl

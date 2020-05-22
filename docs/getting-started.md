@@ -1,9 +1,19 @@
-## BBoxHelper - Getting Started
+The ocrlayout library contains our main class named BBoxHelper.
 
-BBoxHelper has been developed for Python 3.7+. Install the requirements as specified in the requirements.txt. 
+## Before you start
+ocrlayout package has been developed for Python 3.7+. Refer to the package documentation for more details. 
 
+[Package Documentation](https://pypi.org/project/ocrlayout/)
+## Ocrlayout package install
+```
+pip install ocrlayout
+```
+## Import the BBoxHelper and BBOXOCRResponse classes
+```python
+from ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
+```
+## For reference: prep your OCR engine(s)
 Depending on your preferred OCR service Microsoft Azure or Google
-
 ### Microsoft Azure 
 Set the below 2 environment variables in your OS env. 
 ```
@@ -15,37 +25,10 @@ The ComputerVision location refers to the region you have registered your Azure 
 COMPUTERVISION_SUBSCRIPTION_KEY="..."
 COMPUTERVISION_LOCATION="westeurope"
 ```
-
 ### Google 
 Refer to Google documentation to authenticate the [Google Client](https://cloud.google.com/vision/docs/ocr#set-up-your-gcp-project-and-authentication)
 
-## BBoxHelper - Run the Sample script(s) 
-
-Each supported OCR platform has a corresponding testing script 
-
-### Under the project python directory
-1. execute the **bboxtester.azure.py** for testing with Microsoft Azure Computer Vision OCR. 
-2. execute the **bboxtester.google.py** for testing with Google Computer Vision OCR. 
-
-### Each sample script will
-1. process all images located under the images script (one level of the python dir), 
-2. call the corresponding OCR service, 
-3. persist the raw ocr response on disk in the tests-results or the directory of your choice
-4. persist the original image with the bouding boxes of the raw OCR response
-5. call on the BBOx Helper processOCRResponse() method. 
-6. persist the original image with the bouding boxes of the BBoxHelper OCR response .
-
-### Changing the input and output directories used in the samples scripts
-```python
-IMAGES_FOLDER = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), "../images")
-
-RESULTS_FOLDER = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), "../tests-results")
-```
-**NOTE** The RESULTS_FOLDER is created upon running the sample script if not already existing. 
-
-### Calling the BBoxHelper main method 
+## Calling the BBoxHelper main method 
 
 #### For Azure 
 
@@ -82,23 +65,103 @@ bboxresponse=BBoxHelper().processAzureOCRResponse(copy.deepcopy(ocrresponse),sor
 **Note** : BBoxHelper.processOCRResponse() manipulates the original object, if you need to keep the "original" ocr response make sure to do a copy.deepcopy() beforehands.
 
 #### For Google
-
 ```python
 response = client.document_text_detection(image=image)
 ...
 bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation)
 ```
 
-### Sample scripts Output
+
+## BBoxHelper - Run the sample script
+
+Provided a single sample script to showcase how BBoxHelper runs against Azure and Google OCR engines output. 
+
+### Under the project python directory
+
+Execute the **bboxtester.py** for testing with Microsoft Azure CV or Google CV. 
+
+### Sample script invocation
+```
+python3 bboxtester.py -h
+```
+The help output
+```
+Local Package imported
+usage: bboxtester.py [-h] [--image IMAGE] [--imagesdir IMAGESDIR]
+                     [--filter FILTER] [--outputdir OUTPUTDIR] [--callocr]
+                     [-v]
+
+Call OCR outputs for a given image or images dir
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --image IMAGE         Process a single image
+  --imagesdir IMAGESDIR
+                        Process all images contained in the given directory
+  --filter FILTER       Filter the images to process based on their filename
+  --outputdir OUTPUTDIR
+                        Define where all outputs will be stored
+  --callocr             flag to invoke online OCR Service
+  -v, --verbose         DEBUG logging level
+```
+
+#### Invoke on a single image 
+```
+bboxtester.py --image <FULL_IMAGE_PATH>
+```
+Example
+```
+bboxtester.py --image /Users/../../../../images/infography1.jpeg
+```
+#### Invoke for all images from the default IMAGES_FOLDER
+```
+python3 bboxtester.py
+```
+Use the --imagesdir flag to set a different directory 
+```
+python3 bboxtester.py --imagesdir <NEW_IMAGE_DIR>
+```
+#### Invoke for all images which name contains "scan1"
+```
+python3 bboxtester.py --filter scan1
+```
+
+you get the idea...
+
+**Few notes**
+
+- The sample script can run against the local ocrlayout directory if you haven't installed the ocrlayout package, simply run it from where the sample script is located. 
+- The callocr flag means we will invoke the online OCR service to process an image. Not setting that flag means we will rely on the previous call to the OCR Engine which we saved on disk the output (reducing your online service consumption cost for testing) 
+- if the flag *callocr* is on but there is no previously cache output on disk from a specific OCR engine, we will revert to invoke the online OCR service. 
+- If you only interested in testing a single OCR Engine, simply comment out the function prefix by either google_ or axure_ in bboxtester.py. The code detect automatically which function to run based on its signature.
+
+
+### Sample script flow 
+1. process one or all images located under the images script (one level of the python dir), 
+2. call the corresponding OCR service, 
+3. persist the raw ocr response on disk in the tests-results or the directory of your choice
+4. persist the original image with the bouding boxes of the raw OCR response
+5. call on the BBOx Helper processOCRResponse() method. 
+6. persist the original image with the bouding boxes of the BBoxHelper OCR response .
+
+### Sample script Output
 
 Each Sample script will output 
 
 - Azure Annotated Image where we draw the lines its OCR 
 - Azure OCR JSON 
-Azure OCR Text (textual information)
+- Azure OCR Text (textual information)
+- Google Annotated Image where we draw the lines its OCR 
+- Google OCR Text (textual information)
 
-Google Annotated Image where we draw the lines its OCR 
-Google OCR Text (textual information)
+Those outputs allow you to evaluate the different OCR output visually.
 
-Those outputs allow you to evaluate the different OCR output visually. 
+### Changing the default input and output directories used in the sample script
+```python
+IMAGES_FOLDER = os.path.join(os.path.dirname(
+    os.path.realpath(__file__)), "../images")
 
+RESULTS_FOLDER = os.path.join(os.path.dirname(
+    os.path.realpath(__file__)), "../tests-results")
+```
+**NOTE** The RESULTS_FOLDER is created upon running the sample script if not already existing. 
