@@ -169,7 +169,7 @@ def google_document_text_detection_image(filename=None,callOCR=True,verbose=Fals
     draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
     save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".google.bbox"+imgext))
 
-def azure_batch_read_file_in_stream(filename=None,callOCR=True,verbose=False):
+def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
     """RecognizeTextUsingBatchReadAPI.
     This will recognize text of the given image using the Batch Read API.
     """
@@ -197,24 +197,24 @@ def azure_batch_read_file_in_stream(filename=None,callOCR=True,verbose=False):
     if invokeOCR:
         # Azure Computer Vision Call
         with open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_stream:
-            job = azure_client.batch_read_file_in_stream(
+            job = azure_client.read_in_stream(
                 image=image_stream,
                 raw=True
             )
         operation_id = job.headers['Operation-Location'].split('/')[-1]
 
-        image_analysis = azure_client.get_read_operation_result(operation_id,raw=True)
-        while image_analysis.output.status in ['NotStarted', 'Running']:
+        image_analysis = azure_client.get_read_result(operation_id,raw=True)
+        while str.lower(image_analysis.output.status) in ['notstarted', 'running']:
             time.sleep(1)
-            image_analysis = azure_client.get_read_operation_result(operation_id=operation_id,raw=True)
+            image_analysis = azure_client.get_read_result(operation_id=operation_id,raw=True)
         print("\tJob completion is: {}".format(image_analysis.output.status))
-        print("\tRecognized {} page(s)".format(len(image_analysis.output.recognition_results)))
+        print("\tRecognized {} page(s)".format(len(image_analysis.output.analyze_result.read_results)))
 
         with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.json"), 'w') as outfile:
             outfile.write(image_analysis.response.content.decode("utf-8"))
 
         with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.txt"), 'w') as outfile:
-            for rec in image_analysis.output.recognition_results:
+            for rec in image_analysis.output.analyze_result.read_results:
                 for line in rec.lines:
                     outfile.write(line.text)
                     outfile.write('\n')
