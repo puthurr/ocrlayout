@@ -46,6 +46,12 @@ More information on known [limitations](https://puthurr.github.io/known-limitati
 * hOCR Suppport https://en.wikipedia.org/wiki/HOCR [tools](https://github.com/tmbdev/hocr-tools)
 * asyncio support for pages processing 
 
+# Release History
+## 0.2 (2020-05-22 Afternoon)
+- Change to fit the new Azure Computer Vision SDK 0.6.0 [breaking changes](https://pypi.org/project/azure-cognitiveservices-vision-computervision/0.6.0/).
+## 0.1 (2020-05-22 Morning)
+- Initial release 
+
 ## Disclaimer
 
 **THIS CODE IS PROVIDED *AS IS* WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING ANY IMPLIED WARRANTIES OF FITNESS FOR A PARTICULAR PURPOSE, MERCHANTABILITY, OR NON-INFRINGEMENT.**

@@ -168,7 +168,13 @@ class BBOXPageLayout():
     @classmethod
     def from_azure(cls, data):
         lines=[BBOXNormalizedLine.from_azure(i,line) for i,line in enumerate(data["lines"])] 
-        return cls(Id=data["page"],ClockwiseOrientation=data["clockwiseOrientation"],Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
+        # >=0.6.0
+        if "angle" in data:
+            angle = data["angle"]
+        # <= 0.5.0
+        elif "clockwiseOrientation" in data:
+            angle = data["clockwiseOrientation"]
+        return cls(Id=data["page"],ClockwiseOrientation=angle,Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
 
     @classmethod
     def from_google(cls, page):
@@ -246,7 +252,15 @@ class BBOXOCRResponse():
         self.pages=recognitionResults
     @classmethod
     def from_azure(cls, data):
-        pages = list(map(BBOXPageLayout.from_azure, data["recognitionResults"]))
+        # Breaking change from Azure Computer Vision in 0.6.0. Response Model has changed. 
+        # https://github.com/Azure/azure-sdk-for-python/commit/99668db644fe606c24cc7cb553135b6614c10ffd#diff-6f3fc7f0ca3bec21308cea3f35f37afc
+        # <= 0.5.0
+        if "recognitionResults" in data:
+            pages = list(map(BBOXPageLayout.from_azure, data["recognitionResults"]))
+        # >=0.6.0
+        elif "analyzeResult" in data:   
+            if "readResults" in data["analyzeResult"]:
+                pages = list(map(BBOXPageLayout.from_azure, data["analyzeResult"]["readResults"]))
         return cls(status=data["status"],recognitionResults=pages)
     @classmethod
     def from_google(cls, document):
