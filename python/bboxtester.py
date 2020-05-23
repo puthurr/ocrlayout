@@ -69,16 +69,16 @@ def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
     """Draw a border around the image using the hints in the vector list."""
     draw = ImageDraw.Draw(image)
     for page in ocrresponse.pages:
-        for bound in page.Lines:
+        for bound in page.lines:
             draw.polygon([
-                bound.BoundingBox[0].X+padding, bound.BoundingBox[0].Y+padding,
-                bound.BoundingBox[1].X+padding, bound.BoundingBox[1].Y+padding,
-                bound.BoundingBox[2].X+padding, bound.BoundingBox[2].Y+padding,
-                bound.BoundingBox[3].X+padding, bound.BoundingBox[3].Y+padding], 
+                bound.boundingbox[0].X+padding, bound.boundingbox[0].Y+padding,
+                bound.boundingbox[1].X+padding, bound.boundingbox[1].Y+padding,
+                bound.boundingbox[2].X+padding, bound.boundingbox[2].Y+padding,
+                bound.boundingbox[3].X+padding, bound.boundingbox[3].Y+padding], 
                 outline=color)
-            if bound.blockid>0.0:
+            if bound.rank>0.0:
                 font = ImageFont.load_default()
-                draw.text((bound.XMedian, bound.YMedian),str(round(bound.blockid,4)),fill ="red",font=font)
+                draw.text((bound.xmedian, bound.ymedian),str(round(bound.rank,4)),fill ="red",font=font)
     return image
 
 def iterate_all_images(ocrengines=[],filter=None,callOCR=True,verbose=False):
@@ -131,7 +131,7 @@ def google_document_text_detection_image(filename=None,callOCR=True,verbose=Fals
         response = json_format.Parse(json_string, vision.types.AnnotateImageResponse())
 
     # Create BBOX OCR Response from Google's response object
-    bboxresponse=BBoxHelper(verbose=verbose).processGoogleOCRResponse(response.full_text_annotation,boxSeparator=["","\r\n"])
+    bboxresponse=BBoxHelper(verbose=verbose).processGoogleOCRResponse(response.full_text_annotation)
     print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
     converted=BBOXOCRResponse.from_google(response.full_text_annotation)
@@ -141,7 +141,7 @@ def google_document_text_detection_image(filename=None,callOCR=True,verbose=Fals
     with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.json"), 'w') as outfile:
         outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
     with open(os.path.join(RESULTS_FOLDER, imgname+".google.bbox.txt"), 'w') as outfile:
-        outfile.write(bboxresponse.Text)
+        outfile.write(bboxresponse.text)
 
     document = response.full_text_annotation
 
@@ -219,13 +219,13 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
                     outfile.write(line.text)
                     outfile.write('\n')
         ocrresponse=image_analysis.response.content.decode("utf-8")
-    else: 
+    else:
         # Use local OCR cached response when available
         with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.json"), 'r') as cachefile:
             ocrresponse = cachefile.read().replace('\n', '')
 
     # Create BBOX OCR Response from Azure CV string response
-    bboxresponse=BBoxHelper(verbose=verbose).processAzureOCRResponse(ocrresponse,boxSeparator=["","\r\n"])
+    bboxresponse=BBoxHelper(verbose=verbose).processAzureOCRResponse(ocrresponse)
     print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
     # Write the improved ocr response
@@ -233,7 +233,7 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
         outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
     # Write the improved ocr text
     with open(os.path.join(RESULTS_FOLDER, imgname+".azure.bbox.txt"), 'w') as outfile:
-        outfile.write(bboxresponse.Text)
+        outfile.write(bboxresponse.text)
 
     # Create the Before and After images
     imagefn=os.path.join(IMAGES_FOLDER, filename)
@@ -300,4 +300,5 @@ if __name__ == "__main__":
             else: 
                 IMAGES_FOLDER=args.imagesdir
         # Process all images contained the IMAGES_FOLDER
+        # iterate_all_images(ocrengines=ocrengines,filter=args.filter,callOCR=args.callocr,verbose=args.verbose)
         iterate_all_images(ocrengines=ocrengines,filter=args.filter,callOCR=args.callocr,verbose=args.verbose)

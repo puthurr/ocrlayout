@@ -111,34 +111,34 @@ class BBoxUtils():
 
     @classmethod
     def minXminY(cls,index,prevline,line): 
-        prevline.BoundingBox[index].X = min(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
-        prevline.BoundingBox[index].Y = min(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
-        return prevline.BoundingBox[index]
+        prevline.boundingbox[index].X = min(prevline.boundingbox[index].X, line.boundingbox[index].X)
+        prevline.boundingbox[index].Y = min(prevline.boundingbox[index].Y, line.boundingbox[index].Y)
+        return prevline.boundingbox[index]
     @classmethod
     def minXmaxY(cls,index,prevline,line): 
-        prevline.BoundingBox[index].X = min(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
-        prevline.BoundingBox[index].Y = max(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
-        return prevline.BoundingBox[index]
+        prevline.boundingbox[index].X = min(prevline.boundingbox[index].X, line.boundingbox[index].X)
+        prevline.boundingbox[index].Y = max(prevline.boundingbox[index].Y, line.boundingbox[index].Y)
+        return prevline.boundingbox[index]
     @classmethod
     def maxXminY(cls,index,prevline,line):
-        prevline.BoundingBox[index].X = max(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
-        prevline.BoundingBox[index].Y = min(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
-        return prevline.BoundingBox[index]
+        prevline.boundingbox[index].X = max(prevline.boundingbox[index].X, line.boundingbox[index].X)
+        prevline.boundingbox[index].Y = min(prevline.boundingbox[index].Y, line.boundingbox[index].Y)
+        return prevline.boundingbox[index]
     @classmethod
     def maxXmaxY(cls,index,prevline,line): 
-        prevline.BoundingBox[index].X = max(prevline.BoundingBox[index].X, line.BoundingBox[index].X)
-        prevline.BoundingBox[index].Y = max(prevline.BoundingBox[index].Y, line.BoundingBox[index].Y)
-        return prevline.BoundingBox[index]
+        prevline.boundingbox[index].X = max(prevline.boundingbox[index].X, line.boundingbox[index].X)
+        prevline.boundingbox[index].Y = max(prevline.boundingbox[index].Y, line.boundingbox[index].Y)
+        return prevline.boundingbox[index]
 
     @classmethod
     def makeRectangle(cls,line): 
         # X 
         # 
-        line.BoundingBox[0].X=line.BoundingBox[3].X = min(line.BoundingBox[0].X,line.BoundingBox[3].X)
-        line.BoundingBox[1].X=line.BoundingBox[2].X = max(line.BoundingBox[1].X,line.BoundingBox[2].X)
+        line.boundingbox[0].X=line.boundingbox[3].X = min(line.boundingbox[0].X,line.boundingbox[3].X)
+        line.boundingbox[1].X=line.boundingbox[2].X = max(line.boundingbox[1].X,line.boundingbox[2].X)
         # Y
-        line.BoundingBox[0].Y=line.BoundingBox[1].Y = min(line.BoundingBox[0].Y,line.BoundingBox[1].Y)
-        line.BoundingBox[2].Y=line.BoundingBox[3].Y = max(line.BoundingBox[2].Y,line.BoundingBox[3].Y)
+        line.boundingbox[0].Y=line.boundingbox[1].Y = min(line.boundingbox[0].Y,line.boundingbox[1].Y)
+        line.boundingbox[2].Y=line.boundingbox[3].Y = max(line.boundingbox[2].Y,line.boundingbox[3].Y)
 
     @classmethod
     def draw_boxes_on_page(cls,image,blocks,color,padding=0):
@@ -157,31 +157,31 @@ class BBoxSort():
     # Define the multiple Sorting strategy 
     @classmethod
     def sortXY(cls,pageId,width,height,blocks):
-        return sorted(blocks,key= lambda o: (o.BoundingBox[0].X, o.YMedian))
+        return sorted(blocks,key= lambda o: (o.boundingbox[0].X, o.ymedian))
 
     @classmethod
     def sortYX(cls,pageId,width,height,blocks):
-        return sorted(blocks,key= lambda o: (o.BoundingBox[0].Y, o.XMedian))
+        return sorted(blocks,key= lambda o: (o.boundingbox[0].Y, o.xmedian))
 
     @classmethod
     def sortOCRBlocks(cls,pageId,width,height,blocks):
         boxref = 0
-        # XSortedList = sorted([o for o in blocks if o.merged == False],key= lambda o: (o.BoundingBox[boxref].X,o.BoundingBox[boxref].Y))
-        XSortedList = sorted([o for o in blocks if o.merged == False],key= lambda o: (o.XMedian,o.BoundingBox[boxref].Y))
+        # xsortedlist = sorted([o for o in blocks if o.merged == False],key= lambda o: (o.boundingbox[boxref].X,o.boundingbox[boxref].Y))
+        xsortedlist = sorted([o for o in blocks if o.merged == False],key= lambda o: (o.xmedian,o.boundingbox[boxref].Y))
         blockcounter=0.0
-        for block in XSortedList:
+        for block in xsortedlist:
             blockcounter+=1
-            block.blockid+=blockcounter
+            block.rank+=blockcounter
             block.listids.append(blockcounter)
 
-        YSortedList = sorted([o for o in XSortedList if o.merged == False],key= lambda o: (o.BoundingBox[boxref].Y,o.BoundingBox[boxref].X))
+        ysortedlist = sorted([o for o in xsortedlist if o.merged == False],key= lambda o: (o.boundingbox[boxref].Y,o.boundingbox[boxref].X))
         blockcounter=0.0
-        for block in YSortedList:
+        for block in ysortedlist:
             blockcounter+=2
-            block.blockid+=blockcounter
+            block.rank+=blockcounter
             block.listids.append(blockcounter)
 
-        return sorted([o for o in YSortedList if o.merged == False],key= lambda o: (o.blockid,o.BoundingBox[boxref].Y))
+        return sorted([o for o in ysortedlist if o.merged == False],key= lambda o: (o.rank,o.boundingbox[boxref].Y))
 
     @classmethod
     def contoursSort(cls,pageId,width,height,blocks):
@@ -194,7 +194,7 @@ class BBoxSort():
         # Cluster the blocks by Y 
         lineContours=cls.__clusterBlocks(img,blocks)
         # sort list on line number,  x value and contour index
-        contours_sorted = sorted(lineContours,key= lambda o: o.blockid)
+        contours_sorted = sorted(lineContours,key= lambda o: o.rank)
 
         return contours_sorted
 
@@ -256,25 +256,25 @@ class BBoxSort():
                     # Horizontal
                     if y >= line[0] and y <= line[1]:
                         # lineContours.append([line[0],x,j])
-                        block.blockid+=i
-                        block.listids.append(block.blockid)
-                        block.blockid+=(block.XMedian/np.shape(img)[1])
-                        block.listids.append(block.blockid)
+                        block.rank+=i
+                        block.listids.append(block.rank)
+                        block.rank+=(block.xmedian/np.shape(img)[1])
+                        block.listids.append(block.rank)
                         #
-                        block.blockid+=(block.YMedian/np.shape(img)[0])*0.1
-                        block.listids.append(block.blockid)
+                        block.rank+=(block.ymedian/np.shape(img)[0])*0.1
+                        block.listids.append(block.rank)
                         lineContours.append(block)
                 else:
                     # Vertical
                     if x >= line[0] and x <= line[1]:
                         # lineContours.append([line[0],x,j])
-                        block.blockid+=i
-                        block.listids.append(block.blockid)
-                        block.blockid+=(block.YMedian/np.shape(img)[0])
-                        block.listids.append(block.blockid)
+                        block.rank+=i
+                        block.listids.append(block.rank)
+                        block.rank+=(block.ymedian/np.shape(img)[0])
+                        block.listids.append(block.rank)
                         # 
-                        block.blockid+=(block.XMedian/np.shape(img)[1])*0.1
-                        block.listids.append(block.blockid)
+                        block.rank+=(block.xmedian/np.shape(img)[1])*0.1
+                        block.listids.append(block.rank)
                         lineContours.append(block)
 
         return lineContours
