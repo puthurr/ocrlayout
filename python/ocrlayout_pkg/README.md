@@ -47,6 +47,9 @@ More information on known [limitations](https://puthurr.github.io/known-limitati
 * asyncio support for pages processing 
 
 # Release History
+## 0.3 (2020-05-23)
+- Refactoring variables names 
+- Improvement on the end of blocks handling for generating the final text attribute
 ## 0.2 (2020-05-22 Afternoon)
 - Change to fit the new Azure Computer Vision SDK 0.6.0 [breaking changes](https://pypi.org/project/azure-cognitiveservices-vision-computervision/0.6.0/).
 ## 0.1 (2020-05-22 Morning)

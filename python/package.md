@@ -22,6 +22,12 @@ Make sure to clean old versions in the dist folder.
 python3 -m twine upload --repository testpypi dist/* --verbose
 ```
 
+# Upload to pypi with twine
+Make sure to clean old versions in the dist folder. 
+```
+python3 -m twine upload dist/* --verbose
+```
+
 # Test the installed version 
 
 ```

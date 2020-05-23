@@ -3,7 +3,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 setuptools.setup(
     name='ocrlayout',  
-    version='0.2',
+    version='0.3',
     author="Nicolas Uthurriague",
     author_email="puthurr@hotmail.com",
     description="A Helper class to get more meaninful text out of common OCR outputs",
