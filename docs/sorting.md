@@ -9,9 +9,9 @@ The implementation is done in the method named BBoxSort.contoursSort(...)
 
 It is the best algo I could came up with so far. Let me go through it a bit. 
 
-Ultimate Goal : Generate a **blockid** for each block of text which we can sort upon, matching a certain natural reading order.
+Ultimate Goal : Generate a **rank** for each block of text which we can sort upon, matching a certain natural reading order.
 
-To generate a blockid I need first to understand where the blocks stands. 
+To generate a rank scoe, we need first to understand where the blocks stands. 
 
 Inspired by the following [stackoverflow answer](https://stackoverflow.com/questions/58903071/i-want-to-sort-the-words-extracted-from-image-in-order-of-their-occurence-using) contributed by [J-D](https://stackoverflow.com/users/10699171/j-d), the default sorting algo implements the following tasks
 
@@ -34,7 +34,7 @@ For each non-empty region,
 - ascending sort on their opposite axis 
 - add a sequence number to each belonging block + regularization value
 
-At the end, each block has a blockid which we can sort ascendantly. 
+At the end, each block has a rank which we can sort ascendantly. 
 
 This isn't perfect by all means, I'll be happy to receive feedback on this or welcome contributors to enhance this algorithm. 
 
