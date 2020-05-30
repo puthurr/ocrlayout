@@ -32,7 +32,7 @@
           "Ythresholdratio": 1.0
         },
         "RightAlignment": {
-          "Xthresholdratio": 1.5,
+          "Xthresholdratio": 1.0,
           "Ythresholdratio": 1.0
         },
         "CenteredAlignment": {

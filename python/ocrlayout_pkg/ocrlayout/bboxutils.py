@@ -23,6 +23,7 @@ class BBOXConfigEntryThreshold():
     def __init__(self,Xthresholdratio,Ythresholdratio):
         self.Xthresholdratio=Xthresholdratio
         self.Ythresholdratio=Ythresholdratio
+    
     @classmethod
     def from_json(cls, data):
         return cls(**data)
@@ -46,6 +47,19 @@ class BBOXConfig():
     def __init__(self,rectangleNormalization,config={}):
         self.config=config
         self.rectangleNormalization=rectangleNormalization
+    
+    def get_Thresholds(self,unit,ppi=1):
+        return self.config[unit].Thresholds
+
+    def get_ImageTextBoxingBulletListAdjustment(self,unit,ppi=1):
+        return self.config[unit].ImageTextBoxingBulletListAdjustment
+    
+    def get_ImageTextBoxingXThreshold(self,unit,ppi=1):
+        return self.config[unit].ImageTextBoxingXThreshold
+    
+    def get_ImageTextBoxingYThreshold(self,unit,ppi=1):
+        return self.config[unit].ImageTextBoxingYThreshold
+        
     @classmethod
     def from_json(cls, data):
         ocfg={}
@@ -141,14 +155,23 @@ class BBoxUtils():
         line.boundingbox[2].Y=line.boundingbox[3].Y = max(line.boundingbox[2].Y,line.boundingbox[3].Y)
 
     @classmethod
-    def draw_boxes_on_page(cls,image,blocks,color,padding=0):
+    def draw_boxes_on_page(cls,image,blocks,color,scale=1,padding=0):
         """Draw the blocks of text in an image using OpenCV."""
         for block in blocks:
-            pts = np.array(block.getBoxesAsArray(), np.int32)
+            pts = np.array(block.getBoxesAsArray(scale), np.int32)
             pts = pts.reshape((-1,1,2))
             cv2.polylines(image,[pts],True,(255,255,255))
         return image
 
+    @classmethod
+    def determine_ppi(cls,width,height):
+        ppi=72
+        while True:
+            ppi+=1
+            pwidth=width*ppi
+            pheight=height*ppi
+            if (pwidth.is_integer() and pheight.is_integer()):
+                return ppi
 #
 # Bounding Boxes Sorting class
 #
@@ -184,15 +207,15 @@ class BBoxSort():
         return sorted([o for o in ysortedlist if o.merged == False],key= lambda o: (o.rank,o.boundingbox[boxref].Y))
 
     @classmethod
-    def contoursSort(cls,pageId,width,height,blocks):
+    def contoursSort(cls,pageId,width,height,blocks,scale=1):
         import cv2
         import numpy as np
         # Make empty black image
-        image=np.zeros((height,width,1),np.uint8)
-        img = BBoxUtils.draw_boxes_on_page(image,blocks,"white")
+        image=np.zeros((int(height*scale),int(width*scale)),np.uint8)
+        img = BBoxUtils.draw_boxes_on_page(image,blocks,"white",scale)
 
         # Cluster the blocks by Y 
-        lineContours=cls.__clusterBlocks(img,blocks)
+        lineContours=cls.__clusterBlocks(img,blocks,scale)
         # sort list on line number,  x value and contour index
         contours_sorted = sorted(lineContours,key= lambda o: o.rank)
 
@@ -231,12 +254,16 @@ class BBoxSort():
                 if val==0:
                     gaplength+=1
             if i == len(sumAxis):
-                clusters.append((startindex,i,gaplength))
+                if len(clusters)>0:
+                    (start,end,gap)=clusters[-1]
+                    clusters[-1]=(start,i,gap)
+                else:
+                    clusters.append((startindex,i,gaplength))
 
         return clusters
 
     @classmethod
-    def __clusterBlocks(cls,img,blocks,axis=0):
+    def __clusterBlocks(cls,img,blocks,scale=1,axis=0):
         # try to identify clusters of blocks
         clusters=cls.findClusters(img,axis)
 
@@ -249,31 +276,32 @@ class BBoxSort():
         # loop contours, find the boundingrect,
         # compare to line-values
         # store line number,  x value and contour index in list
-        for i,line in enumerate(clusters):
+        for i,cluster in enumerate(clusters):
             for j,block in enumerate(blocks):
-                (x,y,w,h) = block.getBoxesAsRectangle()
+                (x,y,w,h) = block.getBoxesAsRectangle(scale)
                 if axis==1:
                     # Horizontal
-                    if y >= line[0] and y <= line[1]:
+                    if y >= cluster[0] and y <= cluster[1]:
                         # lineContours.append([line[0],x,j])
                         block.rank+=i
                         block.listids.append(block.rank)
-                        block.rank+=(block.xmedian/np.shape(img)[1])
+                        block.rank+=(block.xmedian/(np.shape(img)[1]/scale))
                         block.listids.append(block.rank)
                         #
-                        block.rank+=(block.ymedian/np.shape(img)[0])*0.1
+                        block.rank+=(block.ymedian/(np.shape(img)[0]/scale))*0.01
                         block.listids.append(block.rank)
                         lineContours.append(block)
                 else:
                     # Vertical
-                    if x >= line[0] and x <= line[1]:
-                        # lineContours.append([line[0],x,j])
+                    if x >= cluster[0] and x <= cluster[1]:
+                        # the cluster id weight
                         block.rank+=i
                         block.listids.append(block.rank)
-                        block.rank+=(block.ymedian/np.shape(img)[0])
+                        # the vertical median weight
+                        block.rank+=(block.ymedian/(np.shape(img)[0]/scale))
                         block.listids.append(block.rank)
-                        # 
-                        block.rank+=(block.xmedian/np.shape(img)[1])*0.1
+                        # the horizontal median weight
+                        block.rank+=(block.xmedian/(np.shape(img)[1]/scale))*0.01
                         block.listids.append(block.rank)
                         lineContours.append(block)
 

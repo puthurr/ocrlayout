@@ -77,14 +77,14 @@ class BBOXNormalizedLine():
     def getClusterId(self):
         return self.listids[0]
 
-    def getBoxesAsArray(self):
+    def getBoxesAsArray(self,scale=1):
         result=[]
         for box in self.boundingbox:
-            result.append([box.X,box.Y])
+            result.append([box.X*scale,box.Y*scale])
         return result
 
-    def getBoxesAsRectangle(self):
-        return (self.boundingbox[0].X,self.boundingbox[0].Y,(self.boundingbox[2].X-self.boundingbox[0].X),(self.boundingbox[2].Y-self.boundingbox[0].Y))
+    def getBoxesAsRectangle(self,scale=1):
+        return (self.boundingbox[0].X*scale,self.boundingbox[0].Y*scale,(self.boundingbox[2].X-self.boundingbox[0].X)*scale,(self.boundingbox[2].Y-self.boundingbox[0].Y)*scale)
 
     def __appendText(self, Text):
         self.text += Text
@@ -104,37 +104,39 @@ class BBOXNormalizedLine():
         self.end_idx=line.end_idx
         
     @classmethod
-    def from_azure(cls, index, data):
+    def from_azure(cls, index, data, ppi):
         points = list()
         array=data["boundingBox"]
         if ( len(array) > 4 ):
             x = array[0]
             y = array[1]          
-            points.append(BBOXPoint(x,y))
+            points.append(BBOXPoint(x*ppi,y*ppi))
             x = array[2]
             y = array[3]
-            points.append(BBOXPoint(x, y))
+            points.append(BBOXPoint(x*ppi, y*ppi))
             x = array[4]
             y = array[5]
-            points.append(BBOXPoint(x, y))
+            points.append(BBOXPoint(x*ppi, y*ppi))
             x = array[6]
             y = array[7]
-            points.append(BBOXPoint(x, y))
+            points.append(BBOXPoint(x*ppi, y*ppi))
+
             # Make sure the X of the line is consistent to the first word of the same. 
             if len(data['words'])>0:
                 points[0].X = data['words'][0]["boundingBox"][0]+1
                 points[3].X = data['words'][0]["boundingBox"][6]+1
         else:
-            points = list(map(BBOXPoint.from_azure, array))
+            points = list(map(BBOXPoint.from_azure, [ppi*x for x in array]))
             if len(data['words'])>0:
                 points[0].X = data['words'][0]["boundingBox"][0].X+1
                 points[3].X = data['words'][0]["boundingBox"][3].X+1
           
         wordheights=[]
-        # Check Line in anomaly
+        # # Check Line in anomaly
         for wordbox in data['words']:
             wordheights.append(wordbox['boundingBox'][5]-wordbox['boundingBox'][1])
-        # calculate the average 
+
+        # calculate the average
         npheights = np.array(wordheights)
         avg_height = np.average(npheights)
         std_height = np.std(npheights, dtype=np.float64)
@@ -159,7 +161,7 @@ class BBOXNormalizedLine():
         return BBOXNormalizedLine(Idx=line_counter,BoundingBox=points,Text=line_text)
 
 class BBOXPageLayout():
-    def __init__(self, Id:int = 0,clockwiseorientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None):
+    def __init__(self, Id:int = 0,clockwiseorientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None,ppi=1):
         self.id=Id
         self.clockwiseorientation=clockwiseorientation
         self.width=Width
@@ -168,16 +170,28 @@ class BBOXPageLayout():
         self.language=Language
         self.text=Text
         self.lines=Lines
+        self.ppi=ppi
     @classmethod
     def from_azure(cls, data):
-        lines=[BBOXNormalizedLine.from_azure(i,line) for i,line in enumerate(data["lines"])] 
+        if data["unit"]=="inch":
+            # Azure OCR response doesn't provide the ppi per page
+            # so we need to determine it for normalizing the processing of lines
+            ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
+            # decimal precision on Azure is set to 4, so we can set a 10000 to normalize the box and 
+            # not convert to pixel
+            ppi=10000
+        else:
+            ppi=1
+
+        lines=[BBOXNormalizedLine.from_azure(i,line, 1) for i,line in enumerate(data["lines"])] 
         # >=0.6.0
         if "angle" in data:
             angle = data["angle"]
         # <= 0.5.0
         elif "clockwiseorientation" in data:
             angle = data["clockwiseorientation"]
-        return cls(Id=data["page"],clockwiseorientation=angle,Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines)
+          
+        return cls(Id=data["page"],clockwiseorientation=angle,Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines,ppi=ppi)
 
     @classmethod
     def from_google(cls, page):
@@ -356,16 +370,16 @@ class BBoxHelper():
 
         return response
 
-    def __processLineBoundingBoxes(self, lines, alignment, unit): 
+    def __processLineBoundingBoxes(self, lines, alignment, unit, ppi): 
         boxref = 0
-        Xthresholdratio = bboxconfig.config[unit].Thresholds[alignment].Xthresholdratio
-        Ythresholdratio = bboxconfig.config[unit].Thresholds[alignment].Ythresholdratio
+        Xthresholdratio = bboxconfig.get_Thresholds(unit,ppi)[alignment].Xthresholdratio
+        Ythresholdratio = bboxconfig.get_Thresholds(unit,ppi)[alignment].Ythresholdratio
         if ( alignment == LeftAlignment):
             boxref = 0
             # //Adjustment for bullet list text. 
             for line in lines:
                 if (line.text.startswith(". ")):
-                    line.boundingbox[boxref].X = line.boundingbox[boxref].X + bboxconfig.config[unit].ImageTextBoxingBulletListAdjustment
+                    line.boundingbox[boxref].X = line.boundingbox[boxref].X + bboxconfig.get_ImageTextBoxingBulletListAdjustment(unit,ppi)
             XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.boundingbox[boxref].X,o.boundingbox[boxref].Y))
         elif (alignment == RightAlignment):
             boxref = 1
@@ -390,8 +404,8 @@ class BBoxHelper():
             if (alignment == CenteredAlignment):
                 xcurrent = line.xmedian
 
-            lowb=(regionx - (Xthresholdratio * bboxconfig.config[unit].ImageTextBoxingXThreshold))
-            highb=(regionx + (Xthresholdratio * bboxconfig.config[unit].ImageTextBoxingXThreshold))
+            lowb=(regionx - (Xthresholdratio * bboxconfig.get_ImageTextBoxingXThreshold(unit,ppi)))
+            highb=(regionx + (Xthresholdratio * bboxconfig.get_ImageTextBoxingXThreshold(unit,ppi)))
             if lowb>0.0:
                 bboxlogger.debug("{6}|Region Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(regionidx),str(regionx),str(lowb),str(xcurrent),str(highb),str((xcurrent >= lowb and xcurrent <= highb)),alignment))
 
@@ -425,7 +439,7 @@ class BBoxHelper():
                 ycurrent = line.boundingbox[boxref].Y
                 # lowb=(regiony - (Ythresholdratio * bboxconfig.config[unit].ImageTextBoxingYThreshold))
                 lowb=regiony-(regiony*0.1)
-                highb=(regiony + (Ythresholdratio * bboxconfig.config[unit].ImageTextBoxingYThreshold))
+                highb=(regiony + (Ythresholdratio * bboxconfig.get_ImageTextBoxingYThreshold(unit,ppi)))
                 bboxlogger.debug("{7}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.boundingbox),str(line.text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent < highb)),str(regiony),alignment))
 
                 if (regiony == 0.0):
@@ -455,10 +469,14 @@ class BBoxHelper():
         # Go through potential Text Alignment : Left, Right and Centered.
         for alignment in Alignments:
             bboxlogger.debug("{1}|Processing {0}".format(alignment,str(page.id)))
-            page.lines = self.__processLineBoundingBoxes(page.lines,alignment,page.unit)
+            page.lines = self.__processLineBoundingBoxes(page.lines,alignment,page.unit,page.ppi)
 
         outlines=[o for o in page.lines if o.merged == False]
         bboxlogger.debug("{1}|Output # lines {0}".format(len(outlines),str(page.id)))
+
+        #
+        # Page lines Sorting
+        # 
 
         if sortingAlgo is None:
             # Old Default Sorting Strategy 
@@ -475,7 +493,7 @@ class BBoxHelper():
                 bboxlogger.debug("{0}|Default sorting strategy".format(str(page.id)))
                 sortedBlocks = sorted(outlines,key= lambda o: (o.boundingbox[0].X, o.ymedian))
         else:
-            sortedBlocks = sortingAlgo(page.id,page.width,page.height,blocks=outlines)
+            sortedBlocks = sortingAlgo(page.id,page.width,page.height,blocks=outlines,scale=page.ppi)
 
         # Output the actual from the sorted blocks
         newtext = ""
