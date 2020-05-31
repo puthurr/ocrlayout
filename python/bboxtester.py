@@ -69,16 +69,16 @@ def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
     """Draw a border around the image using the hints in the vector list."""
     draw = ImageDraw.Draw(image)
     for page in ocrresponse.pages:
-        for bound in page.lines:
+        for line in page.lines:
             draw.polygon([
-                bound.boundingbox[0].X+padding, bound.boundingbox[0].Y+padding,
-                bound.boundingbox[1].X+padding, bound.boundingbox[1].Y+padding,
-                bound.boundingbox[2].X+padding, bound.boundingbox[2].Y+padding,
-                bound.boundingbox[3].X+padding, bound.boundingbox[3].Y+padding], 
+                line.boundingbox[0].X+padding, line.boundingbox[0].Y+padding,
+                line.boundingbox[1].X+padding, line.boundingbox[1].Y+padding,
+                line.boundingbox[2].X+padding, line.boundingbox[2].Y+padding,
+                line.boundingbox[3].X+padding, line.boundingbox[3].Y+padding], 
                 outline=color)
-            if bound.rank>0.0:
+            if line.rank>0.0:
                 font = ImageFont.load_default()
-                draw.text((bound.xmedian, bound.ymedian),str(round(bound.rank,4)),fill ="red",font=font)
+                draw.text((line.xmedian, line.ymedian),str(round(line.rank,4)),fill ="red",font=font)
     return image
 
 def iterate_all_images(ocrengines=[],filter=None,callOCR=True,verbose=False):
@@ -251,7 +251,8 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
         # Write the BBOX resulted boxes image
         draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
         save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".azure.bbox"+imgext))
-    except:
+    except Exception as ex:
+        print(ex)
         pass
 
 if __name__ == "__main__":
@@ -262,12 +263,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Call OCR outputs for a given image or images dir')
     parser.add_argument('--image',type=str,required=False,help='Process a single image',default=None)
     parser.add_argument('--imagesdir',type=str,required=False,help='Process all images contained in the given directory',default=IMAGES_FOLDER)
-    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="")
+    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="Rotate")
     parser.add_argument('--outputdir',type=str,required=False,help='Define where all outputs will be stored',default=RESULTS_FOLDER)
-    parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service')
-    parser.set_defaults(callocr=False)
-    parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level')
-    parser.set_defaults(verbose=False)
+    parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service',default=False)
+    parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level',default=True)
     args = parser.parse_args()
 
     # Output dir

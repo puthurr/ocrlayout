@@ -15,6 +15,8 @@ from typing import List
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
+import cv2
+import numpy as np
 
 #
 # Bounding Boxes Config Classes
@@ -88,39 +90,63 @@ class BBoxUtils():
 
     @classmethod
     def rotateBoundingBox(cls,Width:float,Height:float,boundingBox,rotationv:int):
+        """Rotation of the BoundingBox utility function"""
         newboundary = list()
         if (rotationv == 90):
             newboundary.append(boundingBox[0].inv())
             newboundary.append(boundingBox[1].inv())
             newboundary.append(boundingBox[2].inv())
             newboundary.append(boundingBox[3].inv())
-            # //Adjusting the Y axis
-            newboundary[0].Y = Width - boundingBox[0].X
-            newboundary[1].Y = Width - boundingBox[1].X
-            newboundary[2].Y = Width - boundingBox[2].X
-            newboundary[3].Y = Width - boundingBox[3].X
+            # Adjusting the X axis to preserve the original height order
+            newboundary[0].X = Height - newboundary[0].X
+            newboundary[1].X = Height - newboundary[1].X
+            newboundary[2].X = Height - newboundary[2].X
+            newboundary[3].X = Height - newboundary[3].X
         elif (rotationv == -90):
             newboundary.append(boundingBox[0].inv())
             newboundary.append(boundingBox[1].inv())
             newboundary.append(boundingBox[2].inv())
             newboundary.append(boundingBox[3].inv())
-            # //Adjusting the X axis 
-            newboundary[0].X = Height - boundingBox[1].Y
-            newboundary[1].X = Height - boundingBox[0].Y
-            newboundary[2].X = Height - boundingBox[3].Y
-            newboundary[3].X = Height - boundingBox[2].Y
+            # Adjusting the Y axis to preserve the original width order
+            newboundary[0].Y = Width - newboundary[0].Y
+            newboundary[1].Y = Width - newboundary[1].Y
+            newboundary[2].Y = Width - newboundary[2].Y
+            newboundary[3].Y = Width - newboundary[3].Y
         elif (rotationv == 180):
             newboundary.append(boundingBox[1])
             newboundary.append(boundingBox[0])
             newboundary.append(boundingBox[3])
             newboundary.append(boundingBox[2])
             # //Adjust the Y axis 
-            newboundary[0].Y = Height - boundingBox[1].Y
-            newboundary[1].Y = Height - boundingBox[0].Y
-            newboundary[2].Y = Height - boundingBox[3].Y
-            newboundary[3].Y = Height - boundingBox[2].Y
+            newboundary[0].Y = Height - newboundary[0].Y
+            newboundary[1].Y = Height - newboundary[1].Y
+            newboundary[2].Y = Height - newboundary[2].Y
+            newboundary[3].Y = Height - newboundary[3].Y
+        elif (rotationv == -180):
+            newboundary.append(boundingBox[2])
+            newboundary.append(boundingBox[3])
+            newboundary.append(boundingBox[0])
+            newboundary.append(boundingBox[1])
+            # # //Adjust the Y axis 
+            newboundary[0].Y = Height - newboundary[0].Y
+            newboundary[1].Y = Height - newboundary[1].Y
+            newboundary[2].Y = Height - newboundary[2].Y
+            newboundary[3].Y = Height - newboundary[3].Y
         else:
             newboundary.append(boundingBox)
+        return newboundary
+
+    @classmethod
+    def rotateLineBoundingBox(cls,boundingbox, angle):
+        newboundary = list()
+        rad=math.radians(angle)
+        for box in boundingbox:
+            # original formula
+            # box.X = box.X*math.cos(rad) - box.Y*math.sin(rad)
+            # box.Y = box.X*math.sin(rad) + box.Y*math.cos(rad)
+            box.X = box.X*math.cos(rad) + box.Y*math.sin(rad)
+            box.Y = box.X*math.sin(rad) - box.Y*math.cos(rad)
+            newboundary.append(box)
         return newboundary
 
     @classmethod
@@ -208,8 +234,6 @@ class BBoxSort():
 
     @classmethod
     def contoursSort(cls,pageId,width,height,blocks,scale=1):
-        import cv2
-        import numpy as np
         # Make empty black image
         image=np.zeros((int(height*scale),int(width*scale)),np.uint8)
         img = BBoxUtils.draw_boxes_on_page(image,blocks,"white",scale)
