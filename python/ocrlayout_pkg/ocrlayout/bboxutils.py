@@ -263,7 +263,8 @@ class BBoxSort():
                         # lineContours.append([line[0],x,j])
                         block.rank+=i
                         block.listids.append(block.rank)
-                        block.rank+=(block.xmedian/(np.shape(img)[1]/scale))
+                        # block.rank+=(block.xmedian/(np.shape(img)[1]/scale))
+                        block.rank+=(x/np.shape(img)[1])
                         block.listids.append(block.rank)
                         #
                         block.rank+=(block.ymedian/(np.shape(img)[0]/scale))*0.01
@@ -276,7 +277,8 @@ class BBoxSort():
                         block.rank+=i
                         block.listids.append(block.rank)
                         # the vertical median weight
-                        block.rank+=(block.ymedian/(np.shape(img)[0]/scale))
+                        # block.rank+=(block.ymedian/(np.shape(img)[0]/scale))
+                        block.rank+=(y/np.shape(img)[0])
                         block.listids.append(block.rank)
                         # the horizontal median weight
                         block.rank+=(block.xmedian/(np.shape(img)[1]/scale))*0.01
