@@ -189,15 +189,16 @@ class BBoxUtils():
             cv2.polylines(image,[pts],True,(255,255,255))
         return image
 
-    @classmethod
-    def determine_ppi(cls,width,height):
-        ppi=72
-        while True:
-            ppi+=1
-            pwidth=width*ppi
-            pheight=height*ppi
-            if (pwidth.is_integer() and pheight.is_integer()):
-                return ppi
+    # @classmethod
+    # def determine_ppi(cls,width,height):
+    #     ppi=72
+    #     while True:
+    #         ppi+=1
+    #         pwidth=width*ppi
+    #         pheight=height*ppi
+    #         if (pwidth.is_integer() and pheight.is_integer()):
+    #             return ppi
+
 #
 # Bounding Boxes Sorting class
 #

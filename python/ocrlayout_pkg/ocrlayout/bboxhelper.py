@@ -173,10 +173,12 @@ class BBOXPageLayout():
         self.ppi=ppi
     @classmethod
     def from_azure(cls, data):
+        # TODO #1
         if data["unit"]=="inch":
             # Azure OCR response doesn't provide the ppi per page
             # so we need to determine it for normalizing the processing of lines
-            ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
+            # ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
+            
             # decimal precision on Azure is set to 4, so we can set a 10000 to normalize the box and 
             # not convert to pixel
             ppi=10000
