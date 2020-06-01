@@ -147,29 +147,30 @@ def google_document_text_detection_image(filename=None,callOCR=True,verbose=Fals
     document = response.full_text_annotation
 
     try:
-        bounds=[[],[],[],[],[],[]]
-        for page in document.pages:
-            for block in page.blocks:
-                for paragraph in block.paragraphs:
-                    for word in paragraph.words:
-                        for symbol in word.symbols:
-                            bounds[FeatureType.SYMBOL.value].append(symbol.bounding_box)
-                        bounds[FeatureType.WORD.value].append(word.bounding_box)
-                    bounds[FeatureType.PARA.value].append(paragraph.bounding_box)
-                bounds[FeatureType.BLOCK.value].append(block.bounding_box)
+        if imgext not in '.pdf':
+            bounds=[[],[],[],[],[],[]]
+            for page in document.pages:
+                for block in page.blocks:
+                    for paragraph in block.paragraphs:
+                        for word in paragraph.words:
+                            for symbol in word.symbols:
+                                bounds[FeatureType.SYMBOL.value].append(symbol.bounding_box)
+                            bounds[FeatureType.WORD.value].append(word.bounding_box)
+                        bounds[FeatureType.PARA.value].append(paragraph.bounding_box)
+                    bounds[FeatureType.BLOCK.value].append(block.bounding_box)
 
-        image = Image.open(filename)
-        bboximg = image.copy()
+            image = Image.open(filename)
+            bboximg = image.copy()
 
-        # draw_boxes(image, bounds[FeatureType.SYMBOL.value], 'black')
-        draw_gboxes(image, bounds[FeatureType.WORD.value], 'yellow')
-        draw_gboxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
-        draw_gboxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)       
-        image.save(os.path.join(RESULTS_FOLDER, imgname+".google"+imgext))
-        
-        # Write the BBOX resulted image 
-        draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-        save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".google.bbox"+imgext))
+            # draw_boxes(image, bounds[FeatureType.SYMBOL.value], 'black')
+            draw_gboxes(image, bounds[FeatureType.WORD.value], 'yellow')
+            draw_gboxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
+            draw_gboxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)       
+            image.save(os.path.join(RESULTS_FOLDER, imgname+".google"+imgext))
+            
+            # Write the BBOX resulted image 
+            draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
+            save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".google.bbox"+imgext))
     except:
         pass
 
@@ -240,17 +241,18 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
         outfile.write(bboxresponse.text)
 
     try:
-        # Create the Before and After images
-        imagefn=os.path.join(IMAGES_FOLDER, filename)
-        image = Image.open(imagefn)
-        bboximg = image.copy()
-        # Write the Azure OCR resulted boxes image
-        orig_ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
-        draw_bboxes(image, orig_ocrresponse, 'red')
-        save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure"+imgext))
-        # Write the BBOX resulted boxes image
-        draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-        save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".azure.bbox"+imgext))
+        if imgext not in '.pdf':
+            # Create the Before and After images
+            imagefn=os.path.join(IMAGES_FOLDER, filename)
+            image = Image.open(imagefn)
+            bboximg = image.copy()
+            # Write the Azure OCR resulted boxes image
+            orig_ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
+            draw_bboxes(image, orig_ocrresponse, 'red')
+            save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure"+imgext))
+            # Write the BBOX resulted boxes image
+            draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
+            save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".azure.bbox"+imgext))
     except Exception as ex:
         print(ex)
         pass

@@ -18,57 +18,9 @@ from PIL import Image, ImageDraw
 import cv2
 import numpy as np
 
-#
-# Bounding Boxes Config Classes
-#
-class BBOXConfigEntryThreshold():
-    def __init__(self,Xthresholdratio,Ythresholdratio):
-        self.Xthresholdratio=Xthresholdratio
-        self.Ythresholdratio=Ythresholdratio
-    
-    @classmethod
-    def from_json(cls, data):
-        return cls(**data)
+from . import bboxlog
 
-class BBOXConfigEntry():
-    def __init__(self,ImageTextBoxingXThreshold,ImageTextBoxingYThreshold,ImageTextBoxingBulletListAdjustment,GoogleLineBreakThresholdInPixel,Thresholds={}):
-        self.ImageTextBoxingXThreshold=ImageTextBoxingXThreshold
-        self.ImageTextBoxingYThreshold=ImageTextBoxingYThreshold
-        self.ImageTextBoxingBulletListAdjustment=ImageTextBoxingBulletListAdjustment
-        self.GoogleLineBreakThresholdInPixel=GoogleLineBreakThresholdInPixel
-        self.Thresholds=Thresholds
-    @classmethod
-    def from_json(cls, data):
-        obj={}
-        Thresholds=data["Thresholds"]
-        for key in Thresholds:
-            obj[key]=BBOXConfigEntryThreshold.from_json(Thresholds[key])
-        return cls(data["ImageTextBoxingXThreshold"],data["ImageTextBoxingYThreshold"],data["ImageTextBoxingBulletListAdjustment"],data["GoogleLineBreakThresholdInPixel"],obj)
-
-class BBOXConfig():
-    def __init__(self,rectangleNormalization,config={}):
-        self.config=config
-        self.rectangleNormalization=rectangleNormalization
-    
-    def get_Thresholds(self,unit,ppi=1):
-        return self.config[unit].Thresholds
-
-    def get_ImageTextBoxingBulletListAdjustment(self,unit,ppi=1):
-        return self.config[unit].ImageTextBoxingBulletListAdjustment
-    
-    def get_ImageTextBoxingXThreshold(self,unit,ppi=1):
-        return self.config[unit].ImageTextBoxingXThreshold
-    
-    def get_ImageTextBoxingYThreshold(self,unit,ppi=1):
-        return self.config[unit].ImageTextBoxingYThreshold
-        
-    @classmethod
-    def from_json(cls, data):
-        ocfg={}
-        cfgs=data["config"]
-        for key in cfgs:
-            ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
-        return cls(rectangleNormalization=data["rectangleNormalization"],config=ocfg)
+bboxlogger = bboxlog.get_logger()
 
 #
 # Annotation Class
@@ -235,21 +187,20 @@ class BBoxSort():
 
     @classmethod
     def contoursSort(cls,pageId,width,height,blocks,scale=1):
+        bboxlogger.debug("{0}|contoursSort width:{1} height:{2} scale:{3}".format(str(pageId),str(width),str(height),str(scale)))
         # Make empty black image
         image=np.zeros((int(height*scale),int(width*scale)),np.uint8)
         img = BBoxUtils.draw_boxes_on_page(image,blocks,"white",scale)
-
         # Cluster the blocks by Y 
         lineContours=cls.__clusterBlocks(img,blocks,scale)
-        # sort list on line number,  x value and contour index
+        # Sort list on block rank
         contours_sorted = sorted(lineContours,key= lambda o: o.rank)
-
         return contours_sorted
 
     @classmethod
     def findClusters(cls,nparray,axis=0,gapthreshhold=1):
         # sum all entries on a particular axis
-        sumAxis = np.sum(nparray, axis=axis)
+        sumAxis = np.sum(nparray,axis=axis,dtype=np.uint64)
         # loop the summed values
         startindex = 0
         clusters = []
@@ -293,9 +244,11 @@ class BBoxSort():
         clusters=cls.findClusters(img,axis)
 
         # if there is only single cluster then we shall revert to the opposite axis strategy
-        if len(clusters)==1:
+        if len(clusters)<=1:
             axis=np.absolute(axis-1)
             clusters=cls.findClusters(img,axis)
+
+        bboxlogger.debug("Found {0} clusters on axis {1}".format(str(len(clusters)),str(axis)))
 
         lineContours = []
         # loop contours, find the boundingrect,

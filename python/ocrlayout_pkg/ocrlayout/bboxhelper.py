@@ -15,7 +15,7 @@ from typing import List
 
 import numpy as np
 
-from .bboxutils import BBOXAnnotate, BBOXConfig, BBoxSort, BBoxUtils
+from .bboxutils import BBOXAnnotate, BBoxSort, BBoxUtils
 
 # Constants
 LeftAlignment="LeftAlignment"
@@ -24,16 +24,14 @@ CenteredAlignment="CenteredAlignment"
 
 Alignments = [LeftAlignment,RightAlignment,CenteredAlignment]
 
-# Load deafult Configuration
-json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config/config.json")
-with open(json_file_path) as json_file:
-    bboxconfig=BBOXConfig.from_json(json.loads(json_file.read()))
+global bboxconfig
+global bboxlogger 
 
-# Load Logging default configuration 
-log_file_path = path.join(path.dirname(path.abspath(__file__)), 'config/logging.conf')
-logging.config.fileConfig(log_file_path)
-bboxlogger = logging.getLogger('bboxhelper')  # get a logger
-bboxlogger.setLevel(logging.INFO)
+from .bboxconfig import BBOXConfig
+bboxconfig = BBOXConfig.get_config()
+
+from . import bboxlog
+bboxlogger = bboxlog.get_logger()
 
 # Load Default HTML Annotations
 json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config/annotations.json")
@@ -342,11 +340,11 @@ class BBoxHelper():
 
         # Rotate the BBox of each page based on its corresponding orientation
         for page in response.pages:
-            bboxlogger.debug("Processing Page {0} with {1} lines.".format(str(page.id),len(page.lines)))
+            bboxlogger.debug("{0}|Processing Page {0} with {1} lines.".format(str(page.id),len(page.lines)))
             if self.annotate and bboxannotate.pageTag:
                 newtext+=bboxannotate.pageTag[0]
             rotation = round(page.clockwiseorientation,0)
-            bboxlogger.debug("Orientation {}".format(str(rotation)))
+            bboxlogger.debug("{0}|Orientation {1}".format(str(page.id),str(rotation)))
             page_width=page.width
             page_height=page.height
             # Bounding Boxes Orientation
@@ -393,13 +391,13 @@ class BBoxHelper():
                 page.width = page_height
                 page.height = page_width
             else:
-                bboxlogger.info("TODO rotation adjustment required ? ")
+                bboxlogger.warning("TODO rotation adjustment required ? ")
 
             # Invoke the page processing
             page = self.processOCRPageLayout(page, sortingAlgo, boxSeparator)
             newtext += page.text
 
-            bboxlogger.debug("Processed Page {0} with {1} bbox lines.".format(str(page.id),len(page.lines)))
+            bboxlogger.debug("{0}|Processed Page {0} with {1} bbox lines.".format(str(page.id),len(page.lines)))
 
             if self.annotate and bboxannotate.pageTag:
                 newtext+=bboxannotate.pageTag[1]
@@ -527,7 +525,6 @@ class BBoxHelper():
         #
         # Page lines Sorting
         # 
-
         if sortingAlgo is None:
             # Old Default Sorting Strategy 
             # Based on the W/H ratio we set the sorting strategy
@@ -545,7 +542,7 @@ class BBoxHelper():
         else:
             sortedBlocks = sortingAlgo(page.id,page.width,page.height,blocks=outlines,scale=page.ppi)
 
-        bboxlogger.debug("{1}|Output {0} lines after  sorting...".format(len(sortedBlocks),str(page.id)))
+        bboxlogger.debug("{1}|Output {0} lines after sorting...".format(len(sortedBlocks),str(page.id)))
 
         # Output the actual from the sorted blocks
         newtext = ""
