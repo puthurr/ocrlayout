@@ -170,9 +170,10 @@ class BBOXPageLayout():
         self.lines=Lines
         self.ppi=ppi
     @classmethod
-    def from_azure(cls, data):
+    def from_azure(cls, page):
+        bboxlogger.debug("Azure|Page shape (Height,Width) ({0},{1})".format(page["width"],page["height"]))
         # TODO #1
-        if data["unit"]=="inch":
+        if page["unit"]=="inch":
             # Azure OCR response doesn't provide the ppi per page
             # so we need to determine it for normalizing the processing of lines
             # ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
@@ -183,15 +184,15 @@ class BBOXPageLayout():
         else:
             ppi=1
 
-        lines=[BBOXNormalizedLine.from_azure(i,line, 1) for i,line in enumerate(data["lines"])] 
+        lines=[BBOXNormalizedLine.from_azure(i,line, 1) for i,line in enumerate(page["lines"])] 
         # >=0.6.0
-        if "angle" in data:
-            angle = data["angle"]
+        if "angle" in page:
+            angle = page["angle"]
         # <= 0.5.0
-        elif "clockwiseorientation" in data:
-            angle = data["clockwiseorientation"]
+        elif "clockwiseorientation" in page:
+            angle = page["clockwiseorientation"]
           
-        return cls(Id=data["page"],clockwiseorientation=angle,Width=data["width"],Height=data["height"],Unit=data["unit"],Lines=lines,ppi=ppi)
+        return cls(Id=page["page"],clockwiseorientation=angle,Width=page["width"],Height=page["height"],Unit=page["unit"],Lines=lines,ppi=ppi)
 
     @classmethod
     def from_google(cls, page):
@@ -290,7 +291,7 @@ class BBOXOCRResponse():
 
 class BBoxHelper():
 
-    # Support to use a custom configuration file.
+    # Support to use a custom configuration, annotation and logging file.
     def __init__(self, customcfgfilepath=None, customlogfilepath=None, annotate=False, annotationconfig=None,verbose=None):
         global bboxlogger,bboxconfig,bboxannotate
         if customcfgfilepath:
@@ -306,10 +307,13 @@ class BBoxHelper():
         if annotationconfig:
             bboxannotate=BBOXAnnotate.from_json(json.loads(annotationconfig))
 
-    def processAzureOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None):
+    def processAzureOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
         """ processAzureOCRResponse method
             Process an OCR Response input from Azure and returns a new BBox format OCR response.
         """
+        if verbose:
+            bboxlogger.setLevel(logging.DEBUG)
+
         #load the input json into a response object
         if isinstance(input,str):
             response=BBOXOCRResponse.from_azure(json.loads(input))
@@ -320,10 +324,13 @@ class BBoxHelper():
 
         return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
 
-    def processGoogleOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None):
+    def processGoogleOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
         """ processGoogleOCRResponse method
             Process an OCR Response input from Google and returns a new BBox format OCR response.
         """
+        if verbose:
+            bboxlogger.setLevel(logging.DEBUG)
+            
         #Create an BBOXOCRResponse object from Google input
         response=BBOXOCRResponse.from_google(input)
 

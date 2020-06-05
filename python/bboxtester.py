@@ -31,6 +31,9 @@ except ImportError:
     print("Local Package imported")
     from ocrlayout_pkg.ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
 
+# Inject a specific logging.conf for testing.
+bboxhelper=BBoxHelper(customlogfilepath=os.path.join(os.path.dirname(os.path.realpath(__file__)), './bboxtester.conf'))
+
 IMAGES_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../images")
 
@@ -76,6 +79,9 @@ def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
                 line.boundingbox[2].X+padding, line.boundingbox[2].Y+padding,
                 line.boundingbox[3].X+padding, line.boundingbox[3].Y+padding], 
                 outline=color)
+            # if hasattr(line,'words'):
+            #     for word in line.words:
+            #         pass               
             if line.rank>0.0:
                 font = ImageFont.load_default()
                 draw.text((line.xmedian, line.ymedian),str(round(line.rank,4)),fill ="red",font=font)
@@ -132,7 +138,7 @@ def google_document_text_detection_image(filename=None,callOCR=True,verbose=Fals
         response = json_format.Parse(json_string, vision.types.AnnotateImageResponse())
 
     # Create BBOX OCR Response from Google's response object
-    bboxresponse=BBoxHelper(verbose=verbose).processGoogleOCRResponse(response.full_text_annotation)
+    bboxresponse=bboxhelper.processGoogleOCRResponse(response.full_text_annotation,verbose=verbose)
     print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
     converted=BBOXOCRResponse.from_google(response.full_text_annotation)
@@ -230,7 +236,7 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
             ocrresponse = cachefile.read().replace('\n', '')
 
     # Create BBOX OCR Response from Azure CV string response
-    bboxresponse=BBoxHelper(verbose=verbose).processAzureOCRResponse(ocrresponse)
+    bboxresponse=bboxhelper.processAzureOCRResponse(ocrresponse,verbose=verbose)
     print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
     # Write the improved ocr response
@@ -249,6 +255,7 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
             # Write the Azure OCR resulted boxes image
             orig_ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
             draw_bboxes(image, orig_ocrresponse, 'red')
+
             save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure"+imgext))
             # Write the BBOX resulted boxes image
             draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
@@ -265,7 +272,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Call OCR outputs for a given image or images dir')
     parser.add_argument('--image',type=str,required=False,help='Process a single image',default=None)
     parser.add_argument('--imagesdir',type=str,required=False,help='Process all images contained in the given directory',default=IMAGES_FOLDER)
-    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="")
+    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="scan1")
     parser.add_argument('--outputdir',type=str,required=False,help='Define where all outputs will be stored',default=RESULTS_FOLDER)
     parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service',default=False)
     parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level',default=True)
