@@ -254,6 +254,8 @@ class BBoxSort():
         # compare to line-values
         # store line number,  x value and contour index in list
         for i,cluster in enumerate(clusters):
+            (startindex,endindex,gap) = cluster
+            bboxlogger.debug("Found cluster {0} StartIndex {1} EndIndex {2} Gap {3}".format(i,startindex,endindex,gap))
             for j,block in enumerate(blocks):
                 (x,y,w,h) = block.getBoxesAsRectangle(scale)
                 if axis==1:
