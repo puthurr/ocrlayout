@@ -55,11 +55,12 @@ class BBOXPoint():
         return cls(**data)
 
 class BBOXNormalizedLine():
-    def __init__(self, Idx, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avg_height=0.0, std_height=0.0):
+    def __init__(self, Idx, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avg_height=0.0, std_height=0.0, words_count=0):
         self.start_idx=Idx
         self.end_idx=Idx
         self.boundingbox = BoundingBox
         self.text = ''
+        self.words_count=words_count
         self.merged = merged
         self.calculateMedians()
         self.__appendText(Text)
@@ -100,6 +101,7 @@ class BBOXNormalizedLine():
         self.boundingbox[3] = BBoxUtils.minXmaxY(3,self,line)
         self.calculateMedians()
         self.end_idx=line.end_idx
+        self.words_count+=line.words_count
         
     @classmethod
     def from_azure(cls, index, data, ppi):
@@ -121,13 +123,13 @@ class BBOXNormalizedLine():
 
             # Make sure the X of the line is consistent to the first word of the same. 
             if len(data['words'])>0:
-                points[0].X = data['words'][0]["boundingBox"][0]+1
-                points[3].X = data['words'][0]["boundingBox"][6]+1
+                points[0].X = max(data['words'][0]["boundingBox"][0],points[0].X)
+                points[3].X = max(data['words'][0]["boundingBox"][6],points[3].X)
         else:
             points = list(map(BBOXPoint.from_azure, [ppi*x for x in array]))
             if len(data['words'])>0:
-                points[0].X = data['words'][0]["boundingBox"][0].X+1
-                points[3].X = data['words'][0]["boundingBox"][3].X+1
+                points[0].X = max(data['words'][0]["boundingBox"][0].X,points[0].X)
+                points[3].X = max(data['words'][0]["boundingBox"][3].X,points[3].X)
           
         wordheights=[]
         # # Check Line in anomaly
@@ -138,10 +140,10 @@ class BBOXNormalizedLine():
         npheights = np.array(wordheights)
         avg_height = np.average(npheights)
         std_height = np.std(npheights, dtype=np.float64)
-        return cls(Idx=index,BoundingBox=points,Text=data['text'],std_height=std_height,avg_height=avg_height)
+        return cls(Idx=index,BoundingBox=points,Text=data['text'],std_height=std_height,avg_height=avg_height,words_count=len(data['words']))
 
     @classmethod
-    def from_google(cls, line_counter, line_text, line_boxes):
+    def from_google(cls, line_counter, line_text, line_boxes, words_count):
         points = list()
         for bb in range(4):
             points.append(BBOXPoint(0,0))
@@ -156,7 +158,7 @@ class BBOXNormalizedLine():
         points[2].X = line_boxes[-1][2].x 
         points[2].Y = line_boxes[-1][2].y 
 
-        return BBOXNormalizedLine(Idx=line_counter,BoundingBox=points,Text=line_text)
+        return BBOXNormalizedLine(Idx=line_counter,BoundingBox=points,Text=line_text,words_count=words_count)
 
 class BBOXPageLayout():
     def __init__(self, Id:int = 0,clockwiseorientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None,ppi=1):
@@ -196,10 +198,13 @@ class BBOXPageLayout():
 
     @classmethod
     def from_google(cls, page):
+        # Initialization
         lines=[]
         line_counter=0
         line_text =""
         line_boxes=[]
+        line_words_count=0
+
         bboxlogger.debug("Google|Page shape (Height,Width) ({0},{1})".format(page.height,page.width))
         # Create the concept of lines for Google ocr response. 
         for idb, block in enumerate(page.blocks):
@@ -238,14 +243,16 @@ class BBOXPageLayout():
                             # if xdiff > bboxconfig.config["pixel"].GoogleLineBreakThresholdInPixel:
                                 bboxlogger.debug("Google|Detected Cluster Break current {0} found {1} | {2} {3}".format(currentTextColumn,foundTextColumn,str(line_counter),line_text))
                                 # Line break
-                                line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
+                                line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes,words_count=line_words_count)
                                 lines.append(line)
                                 line_text=""
                                 line_counter+=1
                                 line_boxes.clear()
-                    currentTextColumn=foundTextColumn
+                                line_words_count=0
 
-                    line_boxes.append(word.bounding_box.vertices)
+                    currentTextColumn=foundTextColumn
+                    line_boxes.append(word.bounding_box.vertices)                   
+                    line_words_count+=1
                     for symbol in word.symbols:
                         line_text+=symbol.text
                         if symbol.property.detected_break:
@@ -254,11 +261,12 @@ class BBOXPageLayout():
                             elif symbol.property.detected_break.type in [3,5]:
                                 bboxlogger.debug("Google|Detected Line Break {0}| {1} {2}".format(str(symbol.property.detected_break.type),str(line_counter),line_text))
                                 # Line Break
-                                line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes)
+                                line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes,words_count=line_words_count)
                                 lines.append(line)
                                 line_text=""
                                 line_counter+=1
                                 line_boxes.clear()
+                                line_words_count=0                                
 
         return cls(Id=1,Width=page.width,Height=page.height,Lines=lines)
 
