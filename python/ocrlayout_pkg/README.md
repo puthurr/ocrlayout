@@ -36,6 +36,8 @@ More information on known [limitations](https://puthurr.github.io/known-limitati
 * asyncio support for pages processing 
 * Google OCR for documents
 # Release History
+## 0.4.2 (2020-06-06)
+- Remove file logging as default
 ## 0.4.1 (2020-06-01)
 - Comment the determine_ppi method as unstable
 ## 0.4 (2020-05-31)
