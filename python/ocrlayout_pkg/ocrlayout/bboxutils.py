@@ -12,11 +12,10 @@ import uuid
 from datetime import datetime
 from os import path
 from typing import List
+
 import cv2
 import numpy as np
 from PIL import Image, ImageDraw
-import cv2
-import numpy as np
 
 from . import bboxlog
 
