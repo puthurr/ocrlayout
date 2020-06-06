@@ -56,16 +56,34 @@ def save_boxed_image(image,fileout):
     else:
         image.show()
 
-def draw_gboxes(image, bounds, color, padding=0):
+def draw_google_boxes(image, bounds, color, padding=0):
     """Draw a border around the image using the hints in the vector list."""
     draw = ImageDraw.Draw(image)
-
     for bound in bounds:
         draw.polygon([
             bound.vertices[0].x+padding, bound.vertices[0].y+padding,
             bound.vertices[1].x+padding, bound.vertices[1].y+padding,
             bound.vertices[2].x+padding, bound.vertices[2].y+padding,
             bound.vertices[3].x+padding, bound.vertices[3].y+padding], None, color)
+    return image
+
+def draw_azure_boxes(image, boundingbox, color, padding=0):
+    """Draw a border around the image using the hints in the vector list."""
+    draw = ImageDraw.Draw(image)
+    if len(boundingbox)>4:
+        draw.polygon([
+            boundingbox[0]+padding, boundingbox[1]+padding,
+            boundingbox[2]+padding, boundingbox[3]+padding,
+            boundingbox[4]+padding, boundingbox[5]+padding,
+            boundingbox[6]+padding, boundingbox[7]+padding], 
+            outline=color)
+    else:
+        draw.polygon([
+            boundingbox[0].X+padding, boundingbox[0].Y+padding,
+            boundingbox[1].X+padding, boundingbox[1].Y+padding,
+            boundingbox[2].X+padding, boundingbox[2].Y+padding,
+            boundingbox[3].X+padding, boundingbox[3].Y+padding], 
+            outline=color)
     return image
 
 def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
@@ -169,9 +187,9 @@ def google_document_text_detection_image(filename=None,callOCR=True,verbose=Fals
             bboximg = image.copy()
 
             # draw_boxes(image, bounds[FeatureType.SYMBOL.value], 'black')
-            draw_gboxes(image, bounds[FeatureType.WORD.value], 'yellow')
-            draw_gboxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
-            draw_gboxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)       
+            draw_google_boxes(image, bounds[FeatureType.WORD.value], 'yellow')
+            draw_google_boxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
+            draw_google_boxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)       
             image.save(os.path.join(RESULTS_FOLDER, imgname+".google"+imgext))
             
             # Write the BBOX resulted image 
@@ -252,11 +270,23 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
             imagefn=os.path.join(IMAGES_FOLDER, filename)
             image = Image.open(imagefn)
             bboximg = image.copy()
-            # Write the Azure OCR resulted boxes image
-            orig_ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
-            draw_bboxes(image, orig_ocrresponse, 'red')
 
+            # Write the Azure OCR resulted boxes image
+            jsonres = json.loads(ocrresponse)
+            if "recognitionResults" in jsonres:
+                pages=jsonres["recognitionResults"]
+            elif "analyzeResult" in jsonres:
+                pages=jsonres["analyzeResult"]["readResults"]
+            else:
+                pages={}
+
+            for page in pages:
+                for line in page["lines"]:
+                    for word in line["words"]:
+                        image = draw_azure_boxes(image,word["boundingBox"],'yellow')
+                    image = draw_azure_boxes(image,line["boundingBox"],'red',padding=1)
             save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure"+imgext))
+
             # Write the BBOX resulted boxes image
             draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
             save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".azure.bbox"+imgext))
@@ -272,7 +302,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Call OCR outputs for a given image or images dir')
     parser.add_argument('--image',type=str,required=False,help='Process a single image',default=None)
     parser.add_argument('--imagesdir',type=str,required=False,help='Process all images contained in the given directory',default=IMAGES_FOLDER)
-    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="scan1")
+    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="")
     parser.add_argument('--outputdir',type=str,required=False,help='Define where all outputs will be stored',default=RESULTS_FOLDER)
     parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service',default=False)
     parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level',default=True)
