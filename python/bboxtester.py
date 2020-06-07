@@ -1,27 +1,27 @@
 import io
+import json
+import logging
 import os
 import os.path
-import json
-from PIL import Image,ImageDraw, ImageFont
+import sys
+import types
 from enum import Enum
-import logging
 from pathlib import Path
+
+# Azure CV Support
+from azure.cognitiveservices.vision.computervision import ComputerVisionClient
+# Google CV Support - Google Cloud client library
+from google.cloud import vision
+from google.cloud.vision import types as google_types
+from google.protobuf import json_format
+from msrest.authentication import CognitiveServicesCredentials
+from PIL import Image, ImageDraw, ImageFont
 
 try:
     from inspect import getfullargspec as get_arg_spec
 except ImportError:
     from inspect import getargspec as get_arg_spec
-import os
-import sys
-import types
 
-# Azure CV Support
-from azure.cognitiveservices.vision.computervision import ComputerVisionClient
-from msrest.authentication import CognitiveServicesCredentials
-# Google CV Support - Google Cloud client library
-from google.cloud import vision
-from google.cloud.vision import types as google_types
-from google.protobuf import json_format
 
 # OCRLAYOUT Import
 try:
@@ -97,12 +97,12 @@ def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
                 line.boundingbox[2].X+padding, line.boundingbox[2].Y+padding,
                 line.boundingbox[3].X+padding, line.boundingbox[3].Y+padding], 
                 outline=color)
-            # if hasattr(line,'words'):
-            #     for word in line.words:
-            #         pass               
-            if line.rank>0.0:
+            # if line.rank>0.0:
+            #     font = ImageFont.load_default()
+            #     draw.text((line.xmedian, line.ymedian),str(round(line.rank,4)),fill ="red",font=font)
+            if line.sorting:
                 font = ImageFont.load_default()
-                draw.text((line.xmedian, line.ymedian),str(round(line.rank,4)),fill ="red",font=font)
+                draw.text((line.xmedian-10, line.ymedian-10),str(line.sorting),fill ="red",font=font)
     return image
 
 def iterate_all_images(ocrengines=[],filter=None,callOCR=True,verbose=False):
@@ -195,7 +195,8 @@ def google_document_text_detection_image(filename=None,callOCR=True,verbose=Fals
             # Write the BBOX resulted image 
             draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
             save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".google.bbox"+imgext))
-    except:
+    except Exception as ex:
+        print(ex)
         pass
 
 def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
