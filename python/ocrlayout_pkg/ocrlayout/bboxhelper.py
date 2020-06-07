@@ -56,10 +56,10 @@ class BBOXPoint():
 
 class BBOXNormalizedLine():
     def __init__(self, Idx, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avg_height=0.0, std_height=0.0, words_count=0):
-        self.start_idx=Idx
-        self.end_idx=Idx
+        self.start_idx=Idx+1
+        self.end_idx=Idx+1
         self.boundingbox = BoundingBox
-        self.text = ''
+        self.text = None
         self.words_count=words_count
         self.merged = merged
         self.calculateMedians()
@@ -67,7 +67,6 @@ class BBOXNormalizedLine():
         self.avg_height = avg_height
         self.std_height = std_height
         self.rank=0.0
-        self.listids=[]
 
     def calculateMedians(self):
         self.xmedian=(min(self.boundingbox[0].X,self.boundingbox[3].X) + max(self.boundingbox[1].X,self.boundingbox[2].X))/2
@@ -82,11 +81,28 @@ class BBOXNormalizedLine():
             result.append([box.X*scale,box.Y*scale])
         return result
 
+    def getWidthRange(self,scale=1):
+        return (int(self.boundingbox[0].X*scale),int(self.boundingbox[1].X*scale))
+
+    def getHeightRange(self,scale=1):
+        return (int(self.boundingbox[0].Y*scale),int(self.boundingbox[3].Y*scale))
+
     def getBoxesAsRectangle(self,scale=1):
-        return (self.boundingbox[0].X*scale,self.boundingbox[0].Y*scale,(self.boundingbox[2].X-self.boundingbox[0].X)*scale,(self.boundingbox[2].Y-self.boundingbox[0].Y)*scale)
+        return (int(self.boundingbox[0].X*scale),int(self.boundingbox[0].Y*scale),int(self.boundingbox[2].X-self.boundingbox[0].X)*scale,int(self.boundingbox[2].Y-self.boundingbox[0].Y)*scale)
 
     def __appendText(self, Text):
-        self.text += Text
+        # TODO #2
+        if self.text:
+            # Word ceasure with a single dash
+            if self.text.endswith('-'):
+                self.text = self.text[:-1]+Text.strip()
+            else:
+                self.text += (" " + Text.strip())
+                pass
+        else:
+            self.text=Text.strip()
+
+        # Flag for sentence for future use (NLP support)
         if Text.endswith('.'):
             self.end_sentence=True
         else:
@@ -94,7 +110,7 @@ class BBOXNormalizedLine():
 
     def appendLine(self,line):
         line.merged = True
-        self.__appendText(" " + line.text)
+        self.__appendText(line.text)
         self.boundingbox[0] = BBoxUtils.minXminY(0,self,line)
         self.boundingbox[1] = BBoxUtils.maxXminY(1,self,line)
         self.boundingbox[2] = BBoxUtils.maxXmaxY(2,self,line)
@@ -417,8 +433,9 @@ class BBoxHelper():
             if self.annotate and bboxannotate.pageTag:
                 newtext+=bboxannotate.pageTag[1]
             else:
+                # TODO #3
                 # Default page separator
-                newtext += '\r\n'
+                newtext += os.linesep
 
             # Revert the rotation of the bounding boxes back to its original orientation
             if applied_rotation!=0:
@@ -502,9 +519,9 @@ class BBoxHelper():
                 # //Top Left Y
                 ycurrent = line.boundingbox[boxref].Y
                 # lowb=(regiony - (Ythresholdratio * bboxconfig.config[unit].ImageTextBoxingYThreshold))
-                lowb=regiony-(regiony*0.1)
+                lowb=regiony-(regiony*0.05)
                 highb=(regiony + (Ythresholdratio * bboxconfig.get_ImageTextBoxingYThreshold(unit,ppi)))
-                bboxlogger.debug("{7}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.boundingbox),str(line.text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent < highb)),str(regiony),alignment))
+                bboxlogger.debug("{7}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.boundingbox),str(line.text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent <= highb)),str(regiony),alignment))
 
                 if (regiony == 0.0):
                     prevline = line
@@ -534,6 +551,10 @@ class BBoxHelper():
         for alignment in Alignments:
             bboxlogger.debug("{1}|Processing {0}".format(alignment,str(page.id)))
             page.lines = self.__processLineBoundingBoxes(page.lines,alignment,page.unit,page.ppi)
+
+        # Another pass on LeftAlignment
+        bboxlogger.debug("{1}-2|Processing {0}".format(alignment,str(page.id)))
+        page.lines = self.__processLineBoundingBoxes(page.lines,LeftAlignment,page.unit,page.ppi)
 
         outlines=[o for o in page.lines if o.merged == False]
         bboxlogger.debug("{1}|Output {0} lines before sorting...".format(len(outlines),str(page.id)))
@@ -582,13 +603,13 @@ class BBoxHelper():
                         # if block.getClusterId() != sortedBlocks[i+1].getClusterId() and (not sortedBlocks[i+1].text[0].isupper()):
                         if not sortedBlocks[i+1].text[0].isupper():
                             if block.text.strip().endswith("."):
-                                newtext+='\r\n'
+                                newtext+=os.linesep
                             else:
                                 newtext+=' '
                         # elif (not sortedBlocks[i+1].text[0].isupper()):
                         #     newtext+=' '
                         else:
-                            newtext+='\r\n'
+                            newtext+=os.linesep
                     # Default separator
                     # if block.Text.strip().endswith("."):
                     # newtext+='\r\n'
