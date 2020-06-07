@@ -36,6 +36,11 @@ More information on known [limitations](https://puthurr.github.io/known-limitati
 * asyncio support for pages processing 
 * Google OCR for documents
 # Release History
+## 0.5 (2020-06-07)
+- Fix line/word X alignment
+- Improved sorting with with clusters within clusters support
+- added words_count to each line
+- removed dependency on OpenCV and Pillow
 ## 0.4.2 (2020-06-06)
 - Remove file logging as default
 ## 0.4.1 (2020-06-01)

@@ -3,7 +3,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 setuptools.setup(
     name='ocrlayout',  
-    version='0.4.2',
+    version='0.5',
     author="Nicolas Uthurriague",
     author_email="puthurr@hotmail.com",
     description="A Helper class to get more meaninful text out of common OCR outputs",
@@ -25,5 +25,5 @@ setuptools.setup(
     ],
     keywords='OCR, Computer Vision, Text Extraction, Knowledge Mining, BoundingBoxes',
     python_requires='>=3.7',
-    install_requires=['numpy','Pillow>=7','opencv-contrib-python']
+    install_requires=['numpy']
  )
