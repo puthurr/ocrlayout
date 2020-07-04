@@ -131,4 +131,6 @@ dmypy.json
 # Project specific
 tests
 tests-results/
-*.log"site/" 
+*.log
+site
+dotnet
