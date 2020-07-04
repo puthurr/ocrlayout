@@ -16,7 +16,7 @@ setuptools.setup(
 ```
 Export the version as variable 
 ```
-export version="0.4.2"
+export version="0.5"
 ```
 # Build a new package version
 ```

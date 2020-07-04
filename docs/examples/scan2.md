@@ -1,4 +1,4 @@
-## Complex page Layout
+# Complex page Layout
 ![Screenshot](img/scan2.png)
 
 The above image is more complex layout similar to newspapers. 
@@ -311,6 +311,12 @@ REGIONAL RELATIONS: As the chair of ASEAN in  2015, Malaysia is in the delicate 
 THE OIL & GAS YEAR MALAYSIA 2015
 The Whos Who of the Global Energy Industry
 ```
+
+## Accessibility 
+
+Being able to create audio from scanned article is one of my favorite application of ocrlayout. Combined with Translation service you have a powerfull tools to bring new data experience to your end-users or customers. 
+
+Check the [audio file generated](/examples/audio/en_scan2.en-US.mp3) from the bboxed text 
 
 ## Conclusion
 

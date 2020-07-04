@@ -1,4 +1,4 @@
-## Example - Complex infographic
+# Complex infographic
 
 ![Screenshot](img/image285.jpg)
 
@@ -30,7 +30,7 @@ and Development
 Given that most of the UK's oil and
 If successfully explored and
 Following development of wells
-. It is common for investment in the
+It is common for investment in the
 Once the reservoir of a field is
 gas is offshore, seismic surveying
 appraised, the partners will consider
@@ -38,7 +38,7 @@ and facilities, the field will reach
 field to continue during production,
 sufficiently depleted to the extent that
 vessels are used to help identify
-range of development concepts.
+a range of development concepts.
 first production.
 either through the drilling of more
 no further reserves can be economically
@@ -47,36 +47,37 @@ This process typically assesses
 Oil and gas are then produced and
 development wells or construction
 recovered, the field will cease production.
-This enables oil and gas companies
 everything from facilities
-transported ashore via a network
 of new facilities.
+This enables oil and gas companies
+transported ashore via a network
 Companies are legally required to
 to target areas to explore.
 design to operating models and
 of subsea pipelines, or in some
 decommission assets once they have
-The UK Government auctions off
-decommissioning.
 cases for oil via tankers.
 ceased production, which the Oil and
+The UK Government auctions off
+decommissioning.
+Gas Authority estimates will cost around
 licences to prospective bidders,
 Once finalised, a Field Development
-Gas Authority estimates will cost around
+£60 billion (in 2016 money).
 enabling exploration to take place.
 Plan (FDP) is submitted to the Oil
-E60 billion (in 2016 money).
 and Gas Authority for consideration
 This process includes plugging and
-. Once a licence has been obtained, the
 and, when approved, development
 abandonment of wells and the removal
-next step is to drill an exploration well
+Once a licence has been obtained, the
 can begin.
 of topsides, platforms, certain pipelines
-to determine whether hydrocarbons
+next step is to drill an exploration well
 and subsea equipment.
+to determine whether hydrocarbons
 are present.
+AVANA
 If successful, this is often followed
 by drilling of appraisal wells to
 better understand the reservoir's
@@ -86,16 +87,16 @@ This drilling is often undertaken by
 under the North Sea,
 jack-up or semi-submersible mobile
 unseen and undeveloped,
-drilling rigs.
+drilling rigs,
 the journey a barrel of
 hydrocarbons takes
-to reach everyday
 MTOE
+to reach everyday
 household items is
-astounding
-Total Oil Supply
-76
 Gas is typically treated onshore
+astounding
+Total Oil Supply2
+76
 Indigenous Supply
 52
 at processing plants, providing
@@ -106,7 +107,7 @@ Unrefined Oil Import
 conversion into electricity.
 Refined Oil Import
 38
-UK Oil and Gas Supply 2016
+UK Oil and Gas Supply 20161
 Unrefined Oil Export
 -38
 Gas is both delivered to and exported from the
@@ -114,11 +115,11 @@ Refined Oil Export
 -27
 UK, depending on varying international demand,
 via pipelines with Belgium (Bacton-Zeebrugge
-Interconnector), the Netherlands (Bacton-Baigzand
-Pipeline), and the Republic of Ireland (export only)
-Total Gas Supply?
+Interconnector), the Netherlands (Bacton-Balgzand
+Total Gas Supply2
 77
-Most all is converted into
+Most oll is converted into
+Pipeline), and the Republic of Ireland (export only).
 petroleum products such
 Gas demand Is also met via liquefied
 Indigenous Supply
@@ -127,17 +128,18 @@ as feedstock and fuel for
 natural gas Imports, The UK
 transport or other
 imports both crude and
-refined oil via tankers
 Natural Gas Import
 46
 industrial use.
+refined oil via tankers
 to meet domestic
 demand.
 Natural Gas Export
 -10
-rocessed gas enters
+Processed gas enters
 the National Transmission
-components are stripper
+System, or in some cases,
+components are stripped
 out and used as chemical
 feedstocks.
 ```
@@ -156,36 +158,43 @@ The Journey of Oil and Gas in the UK
 Seismic Surveying and Obtaining Licences
 Exploring and Appraising Prospects
 Final Investment Decision and Development
-Given that most of the UK's oil and gas is offshore, seismic surveying vessels are used to help identify where oil and gas may be present. This enables oil and gas companies to target areas to explore. The UK Government auctions off licences to prospective bidders, enabling exploration to take place.
-If successfully explored and appraised, the partners will consider range of development concepts. This process typically assesses everything from facilities design to operating models and decommissioning. Once finalised, a Field Development Plan (FDP) is submitted to the Oil and Gas Authority for consideration and, when approved, development can begin.
-. Once a licence has been obtained, the next step is to drill an exploration well to determine whether hydrocarbons are present. If successful, this is often followed by drilling of appraisal wells to better understand the reservoir's characteristics. This drilling is often undertaken by jack-up or semi-submersible mobile drilling rigs.
+The UK Government auctions off licences to prospective bidders, enabling exploration to take place.
+Given that most of the UK's oil and gas is offshore, seismic surveying vessels are used to help identify where oil and gas may be present.
+This enables oil and gas companies to target areas to explore.
+Once a licence has been obtained, the next step is to drill an exploration well to determine whether hydrocarbons are present.
+This process typically assesses everything from facilities design to operating models and decommissioning.
+Once finalised, a Field Development Plan (FDP) is submitted to the Oil and Gas Authority for consideration and, when approved, development can begin.
+If successfully explored and appraised, the partners will consider a range of development concepts.
+If successful, this is often followed by drilling of appraisal wells to better understand the reservoir's characteristics.
 From sitting deep under the North Sea, unseen and undeveloped, the journey a barrel of hydrocarbons takes to reach everyday household items is astounding
+This drilling is often undertaken by jack-up or semi-submersible mobile drilling rigs,
+Total Oil Supply2 Indigenous Supply
 MTOE
-Total Oil Supply Indigenous Supply
 76 52
 Unrefined Oil Import Refined Oil Import
 53 38
-UK Oil and Gas Supply 2016
-Unrefined Oil Export Refined Oil Export
--38 -27
-Gas is both delivered to and exported from the UK, depending on varying international demand, via pipelines with Belgium (Bacton-Zeebrugge Interconnector), the Netherlands (Bacton-Baigzand Pipeline), and the Republic of Ireland (export only) Gas demand Is also met via liquefied natural gas Imports, The UK imports both crude and refined oil via tankers to meet domestic demand.
-Total Gas Supply? Indigenous Supply
-77 40
-Natural Gas Import
-46
+Gas is both delivered to and exported from the UK, depending on varying international demand, via pipelines with Belgium (Bacton-Zeebrugge Interconnector), the Netherlands (Bacton-Balgzand Pipeline), and the Republic of Ireland (export only). Gas demand Is also met via liquefied natural gas Imports, The UK imports both crude and refined oil via tankers to meet domestic demand.
+UK Oil and Gas Supply 20161
+Total Gas Supply2 Indigenous Supply
 Natural Gas Export
--10
+Natural Gas Import
+Unrefined Oil Export Refined Oil Export -38 -27 -10
+77 40
+46
 5-40 years
 Production and Transportation
-. It is common for investment in the field to continue during production, either through the drilling of more development wells or construction of new facilities.
-Following development of wells and facilities, the field will reach first production. Oil and gas are then produced and transported ashore via a network of subsea pipelines, or in some cases for oil via tankers.
+Following development of wells and facilities, the field will reach first production.
+Oil and gas are then produced and transported ashore via a network of subsea pipelines, or in some cases for oil via tankers.
+It is common for investment in the field to continue during production, either through the drilling of more development wells or construction of new facilities.
+AVANA
 Gas is typically treated onshore at processing plants, providing the primary fuel for heating or sent to power plants for conversion into electricity.
-Most all is converted into petroleum products such as feedstock and fuel for transport or other industrial use.
+Most oll is converted into petroleum products such as feedstock and fuel for transport or other industrial use.
 6-15 years
 Decommissioning
-Once the reservoir of a field is sufficiently depleted to the extent that no further reserves can be economically recovered, the field will cease production. Companies are legally required to decommission assets once they have ceased production, which the Oil and Gas Authority estimates will cost around E60 billion (in 2016 money). This process includes plugging and abandonment of wells and the removal of topsides, platforms, certain pipelines and subsea equipment.
-rocessed gas enters the National Transmission
-components are stripper out and used as chemical feedstocks.
+Once the reservoir of a field is sufficiently depleted to the extent that no further reserves can be economically recovered, the field will cease production.
+Companies are legally required to decommission assets once they have ceased production, which the Oil and Gas Authority estimates will cost around £60 billion (in 2016 money).
+This process includes plugging and abandonment of wells and the removal of topsides, platforms, certain pipelines and subsea equipment.
+Processed gas enters the National Transmission System, or in some cases, components are stripped out and used as chemical feedstocks.
 ```
 
 Here we do have a more concise output, clearly isolating each blocks of text of this infographic. We see the influence of an X axis sorting. 
@@ -335,43 +344,45 @@ Boxes are drawn on the original image. The numbers in red reprensent the blockid
 ![Screenshot](img/image285.google.bbox.jpg)
 #### Google BBoxing Text output
 ```
-The Journey of Oil and Gas in the UK 
-1-5+ years 
-5-18 years 
-1-10 years 
-Seismic Surveying and Obtaining Licences 
-Exploring and Appraising Prospects 
-Final Investment Decision and Development 
-• Given that most of the UK's oil and gas is offshore, seismic surveying vessels are used to help identify where oil and gas may be present. • This enables oil and gas companies to target areas to explore. • The UK Government auctions off licences to prospective bidders, enabling exploration to take place. 
-• If successfully explored and appraised, the partners will consider a range of development concepts. . This process typically assesses everything from facilities design to operating models and decommissioning • Once finalised, a Field Development Plan (FDP) is submitted to the Oil and Gas Authority for consideration and, when approved, development can begin 
-Once a licence has been obtained, the next step is to drill an exploration well to determine whether hydrocarbons are present. If successful, this is often followed by drilling of appraisal wells to better understand the reservoir's characteristics 
-• This drilling is often undertaken by jack-up or semi-submersible mobile drilling rigs 
-From sitting deep under the North Sea, unseen and undeveloped, the journey a barrel of hydrocarbons takes to reach everyday household items is astounding 
-MTOE 
-Total Oil Supply Indigenous Supply 
-76 52 
-Unrefined Oil Import Refined Oil Import 
-53 38 
-UK Oil and Gas Supply 2016 
-Unrefined Oil Export Refined Oil Export 
--38 -27 
-Gas is both delivered to and exported from the UK, depending on varying international demand, via pipelines with Belgium (Bacton-Zeebrugge Interconnector), the Netherlands (Bacton-Baigzand Pipeline), and the Republic of Ireland (export only). Gas demand is also met via liquefied natural gas Imports. The UK Imports both crude and refined oil via tankers to meet domestic demand 
-Total Gas Supply? Indigenous Supply 
-77 40 
-Natural Gas Import 
-46 
-Natural Gas Export 
--10 
-5-40 years 
-Production and Transportation 
-• It is common for investment in the field to continue during production, either through the drilling of more development wells or construction of new facilities. 
-• Following development of wells and facilities, the field will reach first production • Oil and gas are then produced and transported ashore via a network of subsea pipelines, or in some cases for oil via tankers. 
-Gas is typically treated onshore at processing plants, providing the primary fuel for heating or sent to power plants for conversion into electricity 
-Most oll is converted into petroleum products such as feedstock and fuel for transport or other industrial use 
-6-15 years 
-Decommissioning 
-• Once the reservoir of a field is sufficiently depleted to the extent that no further reserves can be economically recovered, the field will cease production • Companies are legally required to decommission assets once they have ceased production, which the Oil and Gas Authority estimates will cost around £60 billion (in 2016 money). • This process includes plugging and abandonment of wells and the removal of topsides, platforms, certain pipelines and subsea equipment. 
-Processed gas enters The National Transmission System, or in some cases, components are stripped out and used as chemical feedstocks 
+The
+Journey of Oil and Gas in the UK
+1-5+ years
+5-18 years
+1-10 years
+Seismic Surveying and Obtaining Licences
+Exploring and Appraising Prospects
+Final Investment Decision and Development • • •
+Given that most of the UK's oil and gas is offshore, seismic surveying vessels are used to help identify where oil and gas may be present. This enables oil and gas companies to target areas to explore. The UK Government auctions off licences to prospective bidders, enabling exploration to take place.
+Once a licence has been obtained, the next step is to drill an exploration well to determine whether hydrocarbons are present. If successful, this is often followed by drilling of appraisal wells to better understand the reservoir's characteristics .
+• •
+This process typically assesses everything from facilities design to operating models and decommissioning Once finalised, a Field Development Plan (FDP) is submitted to the Oil and Gas Authority for consideration and, when approved, development can begin
+If successfully explored and appraised, the partners will consider a range of development concepts.
+From sitting deep under the North Sea, unseen and undeveloped, the journey a barrel of hydrocarbons takes to reach everyday household items is astounding •
+This drilling is often undertaken by jack-up or semi-submersible mobile drilling rigs
+Total Oil Supply Indigenous Supply
+MTOE
+76 52
+Unrefined Oil Import Refined Oil Import
+53 38
+Gas is both delivered to and exported from the UK, depending on varying international demand, via pipelines with Belgium (Bacton-Zeebrugge Interconnector), the Netherlands (Bacton-Baigzand Pipeline), and the Republic of Ireland (export only). Gas demand is also met via liquefied natural gas Imports. The UK Imports both crude and refined oil via tankers to meet domestic demand
+UK Oil and Gas Supply 2016
+Total Gas Supply? Indigenous Supply
+Natural Gas Export
+Natural Gas Import
+Unrefined Oil Export Refined Oil Export -10 -38 -27
+46
+77 40
+5-40 years
+Production and Transportation • •
+Following development of wells and facilities, the field will reach first production Oil and gas are then produced and transported ashore via a network of subsea pipelines, or in some cases for oil via tankers.
+•
+It is common for investment in the field to continue during production, either through the drilling of more development wells or construction of new facilities.
+Gas is typically treated onshore at processing plants, providing the primary fuel for heating or sent to power plants for conversion into electricity
+Most oll is converted into petroleum products such as feedstock and fuel for transport or other industrial use • • •
+6-15 years
+Decommissioning
+Once the reservoir of a field is sufficiently depleted to the extent that no further reserves can be economically recovered, the field will cease production Companies are legally required to decommission assets once they have ceased production, which the Oil and Gas Authority estimates will cost around £60 billion (in 2016 money). This process includes plugging and abandonment of wells and the removal of topsides, platforms, certain pipelines and subsea equipment.
+Processed gas enters The National Transmission System, or in some cases, components are stripped out and used as chemical feedstocks
 ```
 ## Conclusion
 

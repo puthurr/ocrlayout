@@ -28,39 +28,15 @@ COMPUTERVISION_LOCATION="westeurope"
 ### Google 
 Refer to Google documentation to authenticate the [Google Client](https://cloud.google.com/vision/docs/ocr#set-up-your-gcp-project-and-authentication)
 ## Calling the BBoxHelper main method
-if you are not familiar with Azure CV and/or Google Document Text detection first hands I would encourage you to jump the [Sample script](#bboxhelper-run-the-sample-script-in-github) section. 
-#### For Azure CV package >=0.6.0
-If you have the response object from client.get_read_result() 
+if you are not familiar with Azure CV and/or Google Document Text detection first hands I would encourage you to jump the [Sample script](#bboxhelper-run-the-sample-script-in-github) section.
+#### For Azure
 ```python
-# Azure Computer Vision Call
-with open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_stream:
-    job = azure_client.read_in_stream(
-        image=image_stream,
-        raw=True
-    )
-operation_id = job.headers['Operation-Location'].split('/')[-1]
-
-image_analysis = azure_client.get_read_result(operation_id,raw=True)
-while str.lower(image_analysis.output.status) in ['notstarted', 'running']:
-    time.sleep(1)
-    image_analysis = azure_client.get_read_result(operation_id=operation_id,raw=True)
-...
 ocrresponse=image_analysis.response.content.decode("utf-8")
+...
 bboxresponse=BBoxHelper().processAzureOCRResponse(ocrresponse)
 print(bboxresponse.text)
 ```
-The BBoxHelper().processAzureOCRResponse() method will accept a string, dict (JSON) or BBOXOCRResponse instance. 
 
-Passing a dict object (really if you want to)
-```python
-bboxresponse=BBoxHelper().processAzureOCRResponse(json.loads(ocrresponse))
-```
-You can create an BBOXOCRResponse object and send it as is as well. This is usefull to draw the bounding boxes Before and After (see the sample script)
-```python
-ocrresponse=BBOXOCRResponse.from_azure(json.loads(ocrresponse))
-bboxresponse=BBoxHelper().processAzureOCRResponse(copy.deepcopy(ocrresponse))
-```
-**Note** : because of its full compatibility with Azure OCR, BBoxHelper.processAzureOCRResponse() manipulates the original object, if you need to keep the "original" ocr response make sure to do a copy.deepcopy() beforehands.
 #### For Google
 ```python
 response = client.document_text_detection(image=image)
@@ -68,6 +44,27 @@ response = client.document_text_detection(image=image)
 bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation)
 print(bboxresponse.text)
 ```
+>Only passing the full_text_annotation object is supported at the moment.
+#### Notes
+The BBoxHelper().processAzureOCRResponse() method will accept a string, dict (JSON) or BBOXOCRResponse instance. 
+
+Passing a dict object (really if you want to)
+```python
+bboxresponse=BBoxHelper().processAzureOCRResponse(json.loads(ocrresponse))
+```
+Creating a non-optimized BBOXOCRResponse object
+```python
+ocrresponse=BBOXOCRResponse.from_azure(ocrresponse)
+```
+**Important** Passing an existing BBOXOCRResponse object to BBoxHelper.processAzureOCRResponse() will modify it.
+
+If you need to keep the "original" BBOXOCRResponse make sure to do a copy.deepcopy() beforehands.
+```python
+ocrresponse=BBOXOCRResponse.from_azure(ocrresponse)
+bboxresponse=BBoxHelper().processAzureOCRResponse(copy.deepcopy(ocrresponse))
+```
+This could be usefull for evaluating OCR Engine(s) quality response (see the sample script) and ocrlayout optimization (before/after).
+
 ## BBoxHelper - Response object
 - status : reflect the original status of your ocr request response. 
 - original_text : the original text provide by the default OCR engine when relevant. 

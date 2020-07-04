@@ -1,4 +1,4 @@
-# Example - Simple infographic
+# Simple infographic
 
 ![Screenshot](img/image253.png)
 

@@ -61,7 +61,7 @@ response = client.document_text_detection(image=image)
 We then pass the full_text_annotation **object** to the BBoxHelper processing method **processGoogleOCRResponse()**
 ```python
 # Create BBOX OCR Response from Google's response object
-bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation,boxSeparator=["","\r\n"])
+bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation)
 ```
 ### Behind the scene...
 To avoid adding OCR engines direct dependencies in the code, for Google OCR, we only support passing the full_text_annotation object in **processGoogleOCRResponse()**
@@ -104,14 +104,17 @@ class BBoxHelper():
         return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
 
 ```
-
-### If you are dealing with a Google JSON response string 
-
+### Reading the Google JSON response from a file 
 Our Google sample script shows how to read JSON string from a file and rebuild the Google response object 
 ```python
 # Use local OCR cached response when available
 with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.json"), 'r') as cachefile:
     json_string = cachefile.read().replace('\n', '')
+# Hydrate Google annotation object
 response = json_format.Parse(json_string, vision.types.AnnotateImageResponse())
 ```
-then call the processGoogleOCRResponse() as usual. 
+Call the processGoogleOCRResponse() as usual. 
+```python
+# Create BBOX OCR Response from Google's response object
+bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation)
+```

@@ -1,4 +1,4 @@
-## Simple page layout
+# Simple page layout
 ![Screenshot](img/scan1.png)
 
 The above image is a simple scanned image from a PDF. 
@@ -123,6 +123,13 @@ The stage is set for gas to become the world's primary energy source towards 205
 6
 The oil and gas industry will play a very important role in the energy mix throughout our forecasting period
 ```
+
+## Accessibility 
+
+Being able to create audio from scanned article is one of my favorite application of ocrlayout. Combined with Translation service you have a powerfull tools to bring new data experience to your end-users or customers. 
+
+Check the [audio file generated](/examples/audio/en_scan1.en-US.mp3) from the bboxed text 
+
 ## Conclusion
 
 In this example we could see that BBoxHelper brought the concept of columns of text to get us better textual output. Besides key difference between the OCR engines, we now have a consistent output. 
