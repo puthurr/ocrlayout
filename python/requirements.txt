@@ -1,5 +1,4 @@
 wheel
-numpy
 futures;python_version<="2.7"
 python-dateutil
 requests>=2.9.2
@@ -16,5 +15,6 @@ pandas
 google-cloud-vision==1.0.0
 mkdocs
 mkdocs-material
-Pillow>=7
+Pillow
 opencv-contrib-python
+numpy

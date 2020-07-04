@@ -42,9 +42,9 @@ with open(json_file_path) as json_file:
 # Bounding Boxes OCR Classes
 #
 class BBOXPoint():
-    def __init__(self, X: float = 0.0, Y: float = 0.0):
-        self.X = X
-        self.Y = Y
+    def __init__(self, X: float = 0.0, Y: float = 0.0, ppi=1):
+        self.X = X*ppi
+        self.Y = Y*ppi
     # Reverse a BBOX Point X,Y coordinates
     def inv(self):
         return BBOXPoint(self.Y,self.X)   
@@ -53,6 +53,35 @@ class BBOXPoint():
     @classmethod
     def from_azure(cls, data):
         return cls(**data)
+
+    @classmethod
+    def from_azure_ocr(cls, array, ppi):
+        array=array.split(',')
+        array = [ float(x) for x in array]
+        # This a rectangle coordinates not a bounding boxes per se
+        points=list()
+        points.append(BBOXPoint(array[0],array[1],ppi))
+        points.append(BBOXPoint(array[0]+array[2],array[1],ppi))
+        points.append(BBOXPoint(array[0]+array[2],array[1]+array[3],ppi))
+        points.append(BBOXPoint(array[0],array[1]+array[3],ppi))
+        return points
+
+    @classmethod
+    def from_azure_read_2(cls, array, ppi):
+        points = list()
+        x = array[0]
+        y = array[1]          
+        points.append(BBOXPoint(x,y,ppi))
+        x = array[2]
+        y = array[3]
+        points.append(BBOXPoint(x,y,ppi))
+        x = array[4]
+        y = array[5]
+        points.append(BBOXPoint(x,y,ppi))
+        x = array[6]
+        y = array[7]
+        points.append(BBOXPoint(x,y,ppi))
+        return points
 
 class BBOXNormalizedLine():
     def __init__(self, Idx, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avg_height=0.0, std_height=0.0, words_count=0):
@@ -72,6 +101,12 @@ class BBOXNormalizedLine():
         self.xmedian=(min(self.boundingbox[0].X,self.boundingbox[3].X) + max(self.boundingbox[1].X,self.boundingbox[2].X))/2
         self.ymedian=(min(self.boundingbox[0].Y,self.boundingbox[3].Y) + max(self.boundingbox[1].Y,self.boundingbox[2].Y))/2
 
+    def getLineWidthHeight(self):
+        return ((self.boundingbox[3].X-self.boundingbox[0].X), (self.boundingbox[3].Y-self.boundingbox[0].Y))
+    def getRootX(self):
+        return self.boundingbox[0].X
+    def getRootY(self):
+        return self.boundingbox[0].Y
     def getClusterId(self):
         return self.listids[0]
 
@@ -122,41 +157,43 @@ class BBOXNormalizedLine():
     @classmethod
     def from_azure(cls, index, data, ppi):
         points = list()
+        words=list()
+        line_text=''
         array=data["boundingBox"]
-        if ( len(array) > 4 ):
-            x = array[0]
-            y = array[1]          
-            points.append(BBOXPoint(x*ppi,y*ppi))
-            x = array[2]
-            y = array[3]
-            points.append(BBOXPoint(x*ppi, y*ppi))
-            x = array[4]
-            y = array[5]
-            points.append(BBOXPoint(x*ppi, y*ppi))
-            x = array[6]
-            y = array[7]
-            points.append(BBOXPoint(x*ppi, y*ppi))
-
-            # Make sure the X of the line is consistent to the first word of the same. 
-            if len(data['words'])>0:
-                points[0].X = max(data['words'][0]["boundingBox"][0],points[0].X)
-                points[3].X = max(data['words'][0]["boundingBox"][6],points[3].X)
+        # OCR Support       
+        if isinstance(array,str):
+            points = BBOXPoint.from_azure_ocr(array,ppi)           
+            for wordbox in data['words']:
+                words.append(BBOXPoint.from_azure_ocr(wordbox["boundingBox"],ppi))
+                line_text+=wordbox['text']
+                line_text+=' '
+        elif ( len(array) > 4 ):
+            points = BBOXPoint.from_azure_read_2(array,ppi)
+            for wordbox in data['words']:
+                words.append(BBOXPoint.from_azure_read_2(wordbox["boundingBox"],ppi))
         else:
             points = list(map(BBOXPoint.from_azure, [ppi*x for x in array]))
-            if len(data['words'])>0:
-                points[0].X = max(data['words'][0]["boundingBox"][0].X,points[0].X)
-                points[3].X = max(data['words'][0]["boundingBox"][3].X,points[3].X)
-          
+            for wordbox in data['words']:
+                words.append(list(map(BBOXPoint.from_azure, [ppi*x for x in wordbox["boundingBox"]])))
+
+        if "text" in data:
+            line_text=data["text"]
+
+        # Ensure the first word bbox is consistend with the line bbox
+        if len(words)>0:
+            points[0].X = max(words[0][0].X,points[0].X)
+            points[3].X = max(words[0][3].X,points[3].X)
+
+        # Check Line cohenrence on Height
         wordheights=[]
-        # # Check Line in anomaly
-        for wordbox in data['words']:
-            wordheights.append(wordbox['boundingBox'][5]-wordbox['boundingBox'][1])
+        for wordbox in words:
+            wordheights.append(wordbox[3].Y-wordbox[0].Y)
 
         # calculate the average
         npheights = np.array(wordheights)
         avg_height = np.average(npheights)
         std_height = np.std(npheights, dtype=np.float64)
-        return cls(Idx=index,BoundingBox=points,Text=data['text'],std_height=std_height,avg_height=avg_height,words_count=len(data['words']))
+        return cls(Idx=index,BoundingBox=points,Text=line_text,std_height=std_height,avg_height=avg_height,words_count=len(words))
 
     @classmethod
     def from_google(cls, line_counter, line_text, line_boxes, words_count):
@@ -189,28 +226,67 @@ class BBOXPageLayout():
         self.ppi=ppi
     @classmethod
     def from_azure(cls, page):
-        bboxlogger.debug("Azure|Page shape (Height,Width) ({0},{1})".format(page["width"],page["height"]))
+        lines=list()
         # TODO #1
-        if page["unit"]=="inch":
-            # Azure OCR response doesn't provide the ppi per page
-            # so we need to determine it for normalizing the processing of lines
-            # ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
-            
-            # decimal precision on Azure is set to 4, so we can set a 10000 to normalize the box and 
-            # not convert to pixel
-            ppi=10000
+        if "unit" in page:
+            page_unit=page["unit"]
+            if page_unit=="inch":
+                # Azure OCR response doesn't provide the ppi per page
+                # so we need to determine it for normalizing the processing of lines
+                # ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
+                
+                # decimal precision on Azure is set to 4, so we can set a 10000 to normalize the box and 
+                # not convert to pixel
+                ppi=10000
+            else:
+                ppi=1
         else:
+            page_unit="pixel"
             ppi=1
 
-        lines=[BBOXNormalizedLine.from_azure(i,line, 1) for i,line in enumerate(page["lines"])] 
+        # Page Width / Heigth
+        if "width" in page:
+            page_width=page["width"]
+            page_height=page["height"]
+        else:
+            page_width=0
+            page_height=0
+
+        # Support for Azure OCR response (single page)
+        if "regions" in page:
+            merged_lines=list()
+            for region in page["regions"]:
+                for line in region["lines"]:
+                    merged_lines.append(line)
+            lines=[BBOXNormalizedLine.from_azure(i,line, 1) for i,line in enumerate(merged_lines)]
+            # Azure OCR doesn't provide width/height data
+            npx = np.array([x.getRootX() for x in lines])
+            page_width = np.max(npx)-np.min(npx)
+            npy = np.array([y.getRootY() for y in lines])
+            page_height = np.max(npy)-np.min(npy)
+        else:
+            lines=[BBOXNormalizedLine.from_azure(i,line, 1) for i,line in enumerate(page["lines"])]
+
+        bboxlogger.debug("Azure|Page shape (Height,Width) ({0},{1})".format(page_width,page_height))
+
+        angle=0.0
         # >=0.6.0
         if "angle" in page:
             angle = page["angle"]
         # <= 0.5.0
         elif "clockwiseorientation" in page:
             angle = page["clockwiseorientation"]
-          
-        return cls(Id=page["page"],clockwiseorientation=angle,Width=page["width"],Height=page["height"],Unit=page["unit"],Lines=lines,ppi=ppi)
+        # OCR Support
+        elif "textAngle" in page:
+            angle = page["textAngle"]
+
+        # Page Id
+        if "page" in page:
+            page_id=page["page"]
+        else:
+            page_id="0"
+
+        return cls(Id=page_id,clockwiseorientation=angle,Width=page_width,Height=page_height,Unit=page_unit,Lines=lines,ppi=ppi)
 
     @classmethod
     def from_google(cls, page):
@@ -295,6 +371,7 @@ class BBOXOCRResponse():
 
     @classmethod
     def from_azure(cls, data):
+        pages=list()
         # Convert to JSON dict if a JSON string is passed.
         if isinstance(data,str):
             data=json.loads(data)
@@ -307,7 +384,16 @@ class BBOXOCRResponse():
         elif "analyzeResult" in data:
             if "readResults" in data["analyzeResult"]:
                 pages = list(map(BBOXPageLayout.from_azure, data["analyzeResult"]["readResults"]))
-        return cls(status=data["status"],recognitionResults=pages)
+        # Support for the OCR API (old CV modles from Azure) - single page 
+        elif "regions" in data:
+            pages.append(BBOXPageLayout.from_azure(data))
+
+        if "status" in data:
+            status = data["status"]
+        else:
+            status = "ocrsuccess"
+
+        return cls(status=status,recognitionResults=pages)
     @classmethod
     def from_google(cls, document):
         pages = list(map(BBOXPageLayout.from_google,document.pages))
@@ -601,7 +687,7 @@ class BBoxHelper():
                 else:
                     if (i+1<len(sortedBlocks)):
                         # if block.getClusterId() != sortedBlocks[i+1].getClusterId() and (not sortedBlocks[i+1].text[0].isupper()):
-                        if not sortedBlocks[i+1].text[0].isupper():
+                        if not (sortedBlocks[i+1].text[0].isupper() or sortedBlocks[i+1].text[0].isdigit()):
                             if block.text.strip().endswith("."):
                                 newtext+=os.linesep
                             else:

@@ -5,6 +5,9 @@ import os
 import os.path
 import sys
 import types
+import time
+import requests
+
 from enum import Enum
 from pathlib import Path
 
@@ -16,20 +19,21 @@ from google.cloud.vision import types as google_types
 from google.protobuf import json_format
 from msrest.authentication import CognitiveServicesCredentials
 from PIL import Image, ImageDraw, ImageFont
+import cv2
+import numpy as np
 
 try:
     from inspect import getfullargspec as get_arg_spec
 except ImportError:
     from inspect import getargspec as get_arg_spec
 
-
 # OCRLAYOUT Import
 try:
-    from ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
+    from ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper,BBOXPoint
     print("PyPI Package imported")
 except ImportError:
     print("Local Package imported")
-    from ocrlayout_pkg.ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
+    from ocrlayout_pkg.ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper,BBOXPoint
 
 # Inject a specific logging.conf for testing.
 bboxhelper=BBoxHelper(customlogfilepath=os.path.join(os.path.dirname(os.path.realpath(__file__)), './bboxtester.conf'))
@@ -39,6 +43,12 @@ IMAGES_FOLDER = os.path.join(os.path.dirname(
 
 RESULTS_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../tests-results")
+
+#
+# Azure Specific
+#
+SUBSCRIPTION_KEY_ENV_NAME = os.environ.get("COMPUTERVISION_SUBSCRIPTION_KEY", None)
+COMPUTERVISION_LOCATION = os.environ.get("COMPUTERVISION_LOCATION", "westeurope")
 
 #
 # Google Specific
@@ -70,20 +80,21 @@ def draw_google_boxes(image, bounds, color, padding=0):
 def draw_azure_boxes(image, boundingbox, color, padding=0):
     """Draw a border around the image using the hints in the vector list."""
     draw = ImageDraw.Draw(image)
-    if len(boundingbox)>4:
-        draw.polygon([
-            boundingbox[0]+padding, boundingbox[1]+padding,
-            boundingbox[2]+padding, boundingbox[3]+padding,
-            boundingbox[4]+padding, boundingbox[5]+padding,
-            boundingbox[6]+padding, boundingbox[7]+padding], 
-            outline=color)
+
+    # Convert the given bounding box to BBOXPoint 
+    if isinstance(boundingbox,str):
+        points = BBOXPoint.from_azure_ocr(boundingbox,1)           
+    elif ( len(boundingbox) > 4 ):
+        points = BBOXPoint.from_azure_read_2(boundingbox,1)
     else:
-        draw.polygon([
-            boundingbox[0].X+padding, boundingbox[0].Y+padding,
-            boundingbox[1].X+padding, boundingbox[1].Y+padding,
-            boundingbox[2].X+padding, boundingbox[2].Y+padding,
-            boundingbox[3].X+padding, boundingbox[3].Y+padding], 
-            outline=color)
+        points = list(map(BBOXPoint.from_azure, [x for x in boundingbox]))
+
+    draw.polygon([
+        points[0].X+padding, points[0].Y+padding,
+        points[1].X+padding, points[1].Y+padding,
+        points[2].X+padding, points[2].Y+padding,
+        points[3].X+padding, points[3].Y+padding], 
+        outline=color)
     return image
 
 def draw_bboxes(image, ocrresponse:BBOXOCRResponse, color, padding=0):
@@ -115,8 +126,38 @@ def iterate_all_images(ocrengines=[],filter=None,callOCR=True,verbose=False):
                 continue
         if '.DS_Store' in filename:
             continue
+        imgfullpath=os.path.join(IMAGES_FOLDER, filename)
+
+        p = Path(filename)
+        (imgname,imgext) = os.path.splitext(p.name)
+        if imgext not in '.pdf':
+            draw_cv2_boxes(imgfullpath)
+
         for engine in ocrengines:
-            engine(os.path.join(IMAGES_FOLDER, filename),callOCR,verbose)
+            engine(imgfullpath, callOCR, verbose)
+
+def draw_cv2_boxes(image=None):
+    p = Path(image)
+    (imgname,imgext) = os.path.splitext(p.name)
+
+    # Load image, grayscale, Gaussian blur, Otsu's threshold
+    image = cv2.imread(image)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (7,7), 0)
+    thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+
+    # Create rectangular structuring element and dilate
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+    dilate = cv2.dilate(thresh, kernel, iterations=4)
+
+    # Find contours and draw rectangle
+    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    for c in cnts:
+        x,y,w,h = cv2.boundingRect(c)
+        cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 2)
+
+    cv2.imwrite(os.path.join(RESULTS_FOLDER,(imgname+'.cv2'+imgext)),image)
 
 def google_document_text_detection_image(filename=None,callOCR=True,verbose=False):
     """Google document text detection. 
@@ -199,29 +240,112 @@ def google_document_text_detection_image(filename=None,callOCR=True,verbose=Fals
         print(ex)
         pass
 
-def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
-    """RecognizeTextUsingBatchReadAPI.
-    This will recognize text of the given image using the Batch Read API.
-    """
-    import time
-    #
-    # Azure Specific
-    #
-    SUBSCRIPTION_KEY_ENV_NAME = os.environ.get("COMPUTERVISION_SUBSCRIPTION_KEY", None)
-    COMPUTERVISION_LOCATION = os.environ.get("COMPUTERVISION_LOCATION", "westeurope")
-
-    azure_client = ComputerVisionClient(
-        endpoint="https://" + COMPUTERVISION_LOCATION + ".api.cognitive.microsoft.com/",
-        credentials=CognitiveServicesCredentials(SUBSCRIPTION_KEY_ENV_NAME)
-    )
-    print("AZURE Image Name {}".format(filename))
+def azure_ocr(filename=None,callOCR=True,verbose=False):
+    print("AZURE OCR Image Name {}".format(filename))
     p = Path(filename)
     (imgname,imgext) = os.path.splitext(p.name)
 
     # Check if we have a cached ocr response already for this provider
     invokeOCR=callOCR
     if not callOCR:
-        if not os.path.exists(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.json")):
+        if not os.path.exists(os.path.join(RESULTS_FOLDER, imgname+".azure.ocr.json")):
+            invokeOCR=True
+
+    ocrexception=False
+
+    if invokeOCR:
+        ocr_url="https://" + COMPUTERVISION_LOCATION + ".api.cognitive.microsoft.com/vision/v3.0/ocr"
+        # Set Content-Type to octet-stream
+        headers = {'Ocp-Apim-Subscription-Key': SUBSCRIPTION_KEY_ENV_NAME, 'Content-Type': 'application/octet-stream'}
+        params = {'language': 'unk', 'detectOrientation': 'true'}
+
+        # Azure Computer Vision OCR API Call
+        with open(os.path.join(IMAGES_FOLDER, filename), "rb") as image_stream:
+            response = requests.post(ocr_url, headers=headers, params=params, data = image_stream)
+            # response.raise_for_status()
+            image_analysis=response.json()
+
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.ocr.json"), 'w') as outfile:
+            outfile.write(response.content.decode("utf-8"))
+
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.ocr.txt"), 'w') as outfile:
+            if "regions" in image_analysis:
+                # Extract the word bounding boxes and text.
+                line_infos = [region["lines"] for region in image_analysis["regions"]]
+                for line in line_infos:
+                    for word_metadata in line:
+                        for word_info in word_metadata["words"]:
+                            outfile.write(word_info['text'])
+                    outfile.write('\n')
+            else: 
+                ocrexception = True
+        ocrresponse=response.content.decode("utf-8")
+    else:
+        # Use local OCR cached response when available
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.ocr.json"), 'r') as cachefile:
+            ocrresponse = cachefile.read().replace('\n', '')
+
+    if not ocrexception:
+        # Create BBOX OCR Response from Azure CV string response
+        bboxresponse=bboxhelper.processAzureOCRResponse(ocrresponse,verbose=verbose)
+        print("BBOX Helper Response {}".format(bboxresponse.__dict__))
+
+        # Write the improved ocr response
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.ocr.bbox.json"), 'w') as outfile:
+            outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
+        # Write the improved ocr text
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.ocr.bbox.txt"), 'w') as outfile:
+            outfile.write(bboxresponse.text)
+
+        try:
+            if imgext not in '.pdf':
+                # Create the Before and After images
+                imagefn=os.path.join(IMAGES_FOLDER, filename)
+                image = Image.open(imagefn)
+                bboximg = image.copy()
+
+                # Write the Azure OCR resulted boxes image
+                jsonres = json.loads(ocrresponse)
+                if "recognitionResults" in jsonres:
+                    blocks=jsonres["recognitionResults"]
+                elif "analyzeResult" in jsonres:
+                    blocks=jsonres["analyzeResult"]["readResults"]
+                elif "regions" in jsonres:
+                    blocks=jsonres["regions"]
+                else:
+                    blocks={}
+
+                for block in blocks:
+                    for line in block["lines"]:
+                        for word in line["words"]:
+                            image = draw_azure_boxes(image,word["boundingBox"],'yellow')
+                        image = draw_azure_boxes(image,line["boundingBox"],'red',padding=1)
+
+                save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure.ocr"+imgext))
+
+                # Write the BBOX resulted boxes image
+                draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
+                save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".azure.ocr.bbox"+imgext))
+        except Exception as ex:
+            print(ex)
+            pass
+
+def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
+    """RecognizeTextUsingBatchReadAPI.
+    This will recognize text of the given image using the Batch Read API.
+    """
+    azure_client = ComputerVisionClient(
+        endpoint="https://" + COMPUTERVISION_LOCATION + ".api.cognitive.microsoft.com/",
+        credentials=CognitiveServicesCredentials(SUBSCRIPTION_KEY_ENV_NAME)
+    )
+    print("AZURE READ Image Name {}".format(filename))
+    p = Path(filename)
+    (imgname,imgext) = os.path.splitext(p.name)
+
+    # Check if we have a cached ocr response already for this provider
+    invokeOCR=callOCR
+    if not callOCR:
+        if not os.path.exists(os.path.join(RESULTS_FOLDER, imgname+".azure.read.json")):
             invokeOCR=True
 
     if invokeOCR:
@@ -240,10 +364,10 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
         print("\tJob completion is: {}".format(image_analysis.output.status))
         print("\tRecognized {} page(s)".format(len(image_analysis.output.analyze_result.read_results)))
 
-        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.json"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.read.json"), 'w') as outfile:
             outfile.write(image_analysis.response.content.decode("utf-8"))
 
-        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.txt"), 'w') as outfile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.read.txt"), 'w') as outfile:
             for rec in image_analysis.output.analyze_result.read_results:
                 for line in rec.lines:
                     outfile.write(line.text)
@@ -251,7 +375,7 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
         ocrresponse=image_analysis.response.content.decode("utf-8")
     else:
         # Use local OCR cached response when available
-        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.batch_read.json"), 'r') as cachefile:
+        with open(os.path.join(RESULTS_FOLDER, imgname+".azure.read.json"), 'r') as cachefile:
             ocrresponse = cachefile.read().replace('\n', '')
 
     # Create BBOX OCR Response from Azure CV string response
@@ -259,10 +383,10 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
     print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
     # Write the improved ocr response
-    with open(os.path.join(RESULTS_FOLDER, imgname+".azure.bbox.json"), 'w') as outfile:
+    with open(os.path.join(RESULTS_FOLDER, imgname+".azure.read.bbox.json"), 'w') as outfile:
         outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
     # Write the improved ocr text
-    with open(os.path.join(RESULTS_FOLDER, imgname+".azure.bbox.txt"), 'w') as outfile:
+    with open(os.path.join(RESULTS_FOLDER, imgname+".azure.read.bbox.txt"), 'w') as outfile:
         outfile.write(bboxresponse.text)
 
     try:
@@ -275,22 +399,25 @@ def azure_read_in_stream(filename=None,callOCR=True,verbose=False):
             # Write the Azure OCR resulted boxes image
             jsonres = json.loads(ocrresponse)
             if "recognitionResults" in jsonres:
-                pages=jsonres["recognitionResults"]
+                blocks=jsonres["recognitionResults"]
             elif "analyzeResult" in jsonres:
-                pages=jsonres["analyzeResult"]["readResults"]
+                blocks=jsonres["analyzeResult"]["readResults"]
+            elif "regions" in jsonres:
+                blocks=jsonres["regions"]
             else:
-                pages={}
+                blocks={}
 
-            for page in pages:
-                for line in page["lines"]:
+            for block in blocks:
+                for line in block["lines"]:
                     for word in line["words"]:
                         image = draw_azure_boxes(image,word["boundingBox"],'yellow')
                     image = draw_azure_boxes(image,line["boundingBox"],'red',padding=1)
-            save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure"+imgext))
+
+            save_boxed_image(image,os.path.join(RESULTS_FOLDER, imgname+".azure.read"+imgext))
 
             # Write the BBOX resulted boxes image
             draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-            save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".azure.bbox"+imgext))
+            save_boxed_image(bboximg,os.path.join(RESULTS_FOLDER, imgname+".azure.read.bbox"+imgext))
     except Exception as ex:
         print(ex)
         pass
@@ -305,7 +432,7 @@ if __name__ == "__main__":
     parser.add_argument('--imagesdir',type=str,required=False,help='Process all images contained in the given directory',default=IMAGES_FOLDER)
     parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="")
     parser.add_argument('--outputdir',type=str,required=False,help='Define where all outputs will be stored',default=RESULTS_FOLDER)
-    parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service',default=False)
+    parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service',default=True)
     parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level',default=True)
     args = parser.parse_args()
 
