@@ -1,4 +1,4 @@
-# OcrLayout Library
+# Ocrlayout Library
 Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of lines. 
 
 ## Problem Statement
