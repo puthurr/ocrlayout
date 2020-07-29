@@ -36,6 +36,8 @@ More information on known [limitations](https://puthurr.github.io/known-limitati
 * asyncio support for pages processing 
 * Google OCR for documents
 # Release History
+## 0.7 (2020-07-29)
+- Configurable merge line character (default is a single space)
 ## 0.6 (2020-07-09)
 - Support for Azure OCR API 
 ## 0.5 (2020-06-07)

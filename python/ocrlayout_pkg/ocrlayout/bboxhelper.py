@@ -125,14 +125,14 @@ class BBOXNormalizedLine():
     def getBoxesAsRectangle(self,scale=1):
         return (int(self.boundingbox[0].X*scale),int(self.boundingbox[0].Y*scale),int(self.boundingbox[2].X-self.boundingbox[0].X)*scale,int(self.boundingbox[2].Y-self.boundingbox[0].Y)*scale)
 
-    def __appendText(self, Text):
+    def __appendText(self,Text,lineMergeChar=''):
         # TODO #2
         if self.text:
             # Word ceasure with a single dash
             if self.text.endswith('-'):
                 self.text = self.text[:-1]+Text.strip()
             else:
-                self.text += (" " + Text.strip())
+                self.text += (lineMergeChar + Text.strip())
                 pass
         else:
             self.text=Text.strip()
@@ -143,9 +143,9 @@ class BBOXNormalizedLine():
         else:
             self.end_sentence=False
 
-    def appendLine(self,line):
+    def mergeLine(self,line,lineMergeChar):
         line.merged = True
-        self.__appendText(line.text)
+        self.__appendText(line.text,lineMergeChar)
         self.boundingbox[0] = BBoxUtils.minXminY(0,self,line)
         self.boundingbox[1] = BBoxUtils.maxXminY(1,self,line)
         self.boundingbox[2] = BBoxUtils.maxXmaxY(2,self,line)
@@ -612,7 +612,7 @@ class BBoxHelper():
                 if (regiony == 0.0):
                     prevline = line
                 elif (ycurrent >= lowb and ycurrent < highb):
-                    prevline.appendLine(line)
+                    prevline.mergeLine(line,bboxconfig.lineMergeChar)
                 else:
                     prevline = line
 

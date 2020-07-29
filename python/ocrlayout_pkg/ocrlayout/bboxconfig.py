@@ -31,8 +31,9 @@ class BBOXConfigEntry():
         return cls(data["ImageTextBoxingXThreshold"],data["ImageTextBoxingYThreshold"],data["ImageTextBoxingBulletListAdjustment"],data["GoogleLineBreakThresholdInPixel"],obj)
 
 class BBOXConfig():
-    def __init__(self,rectangleNormalization,config={}):
+    def __init__(self,lineMergeChar,rectangleNormalization,config={}):
         self.config=config
+        self.lineMergeChar=lineMergeChar
         self.rectangleNormalization=rectangleNormalization
     
     def get_Thresholds(self,unit,ppi=1):
@@ -53,7 +54,7 @@ class BBOXConfig():
         cfgs=data["config"]
         for key in cfgs:
             ocfg[key]=BBOXConfigEntry.from_json(cfgs[key])
-        return cls(rectangleNormalization=data["rectangleNormalization"],config=ocfg)
+        return cls(lineMergeChar=data["lineMergeChar"],rectangleNormalization=data["rectangleNormalization"],config=ocfg)
 
     @classmethod
     def get_config(cls):
