@@ -100,32 +100,35 @@ class AWSOCREngine(OCREngine):
 
                 width, height = image.size
 
-                # Create BBOX OCR Response from Azure CV string response
+                # Create BBOX OCR Response from AWS string response
                 bboxresponse=self.bboxhelper.processAWSOCRResponse(ocrresponse,width,height,verbose=verbose)
-                print("BBOX Helper Response {}".format(bboxresponse.__dict__))
+                if bboxresponse:
+                    print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
-                # Write the improved ocr response
-                with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox.json"), 'w') as outfile:
-                    outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
-                # Write the improved ocr text
-                with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox.txt"), 'w') as outfile:
-                    outfile.write(bboxresponse.text)
+                    # Write the improved ocr response
+                    with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox.json"), 'w') as outfile:
+                        outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
+                    # Write the improved ocr text
+                    with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox.txt"), 'w') as outfile:
+                        outfile.write(bboxresponse.text)
 
-                # Create the Before and After images
-                bboximg = image.copy()
-                
-                blocks=ocrresponse["Blocks"]
-                for block in blocks:
-                    if block["BlockType"] == "LINE":
-                        image = self.draw_boxes(image,block["Geometry"]["Polygon"],'red')
-                    if block["BlockType"] == "WORD":
-                        image = self.draw_boxes(image,block["Geometry"]["Polygon"],'yellow',padding=1)
+                    # Create the Before and After images
+                    bboximg = image.copy()
+                    
+                    blocks=ocrresponse["Blocks"]
+                    for block in blocks:
+                        if block["BlockType"] == "LINE":
+                            image = self.draw_boxes(image,block["Geometry"]["Polygon"],'red')
+                        if block["BlockType"] == "WORD":
+                            image = self.draw_boxes(image,block["Geometry"]["Polygon"],'yellow',padding=1)
 
-                OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract"+imgext))
+                    OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract"+imgext))
 
-                # Write the BBOX resulted boxes image
-                OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-                OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox"+imgext))
+                    # Write the BBOX resulted boxes image
+                    OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
+                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox"+imgext))
+                else:
+                    print("BBOX Helper Invalid Response. Input was {}".format(json_string))             
 
         except Exception as ex:
             print(ex)

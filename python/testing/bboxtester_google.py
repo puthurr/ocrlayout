@@ -94,45 +94,50 @@ class GoogleOCREngine(OCREngine):
 
         # Create BBOX OCR Response from Google's JSON output
         bboxresponse=self.bboxhelper.processGoogleOCRResponse(json_string,verbose=verbose)
-        print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
-        converted=BBOXOCRResponse.from_google(json.loads(json_string))
-        with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.converted.json"), 'w') as outfile:
-            outfile.write(json.dumps(converted.__dict__, default = lambda o: o.__dict__, indent=4))
+        if bboxresponse:
+            print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
-        with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox.json"), 'w') as outfile:
-            outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
-        with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox.txt"), 'w') as outfile:
-            outfile.write(bboxresponse.text)
+            converted=BBOXOCRResponse.from_google(json.loads(json_string))
+            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.converted.json"), 'w') as outfile:
+                outfile.write(json.dumps(converted.__dict__, default = lambda o: o.__dict__, indent=4))
 
-        document = response.full_text_annotation
+            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox.json"), 'w') as outfile:
+                outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
+            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox.txt"), 'w') as outfile:
+                outfile.write(bboxresponse.text)
 
-        try:
-            if imgext not in '.pdf':
-                bounds=[[],[],[],[],[],[]]
-                for page in document.pages:
-                    for block in page.blocks:
-                        for paragraph in block.paragraphs:
-                            for word in paragraph.words:
-                                for symbol in word.symbols:
-                                    bounds[FeatureType.SYMBOL.value].append(symbol.bounding_box)
-                                bounds[FeatureType.WORD.value].append(word.bounding_box)
-                            bounds[FeatureType.PARA.value].append(paragraph.bounding_box)
-                        bounds[FeatureType.BLOCK.value].append(block.bounding_box)
+            document = response.full_text_annotation
 
-                image = Image.open(filename)
-                bboximg = image.copy()
+            try:
+                if imgext not in '.pdf':
+                    bounds=[[],[],[],[],[],[]]
+                    for page in document.pages:
+                        for block in page.blocks:
+                            for paragraph in block.paragraphs:
+                                for word in paragraph.words:
+                                    for symbol in word.symbols:
+                                        bounds[FeatureType.SYMBOL.value].append(symbol.bounding_box)
+                                    bounds[FeatureType.WORD.value].append(word.bounding_box)
+                                bounds[FeatureType.PARA.value].append(paragraph.bounding_box)
+                            bounds[FeatureType.BLOCK.value].append(block.bounding_box)
 
-                # draw_boxes(image, bounds[FeatureType.SYMBOL.value], 'black')
-                self.draw_boxes(image, bounds[FeatureType.WORD.value], 'yellow')
-                self.draw_boxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
-                self.draw_boxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)       
-                image.save(os.path.join(self.RESULTS_FOLDER, imgname+".google"+imgext))
-                
-                # Write the BBOX resulted image 
-                OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-                OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox"+imgext))
-        except Exception as ex:
-            print(ex)
-            pass
+                    image = Image.open(filename)
+                    bboximg = image.copy()
+
+                    # draw_boxes(image, bounds[FeatureType.SYMBOL.value], 'black')
+                    self.draw_boxes(image, bounds[FeatureType.WORD.value], 'yellow')
+                    self.draw_boxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
+                    self.draw_boxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)       
+                    image.save(os.path.join(self.RESULTS_FOLDER, imgname+".google"+imgext))
+                    
+                    # Write the BBOX resulted image 
+                    OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
+                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox"+imgext))
+            except Exception as ex:
+                print(ex)
+                pass
+        else:
+            print("BBOX Helper Invalid Response. Input was {}".format(json_string))
+
 
