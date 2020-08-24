@@ -79,9 +79,10 @@ class GoogleOCREngine(OCREngine):
             image = google_types.Image(content=content)
 
             response = google_client.document_text_detection(image=image)
+            json_string=json_format.MessageToJson(response)
 
             with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.vision.json"), 'w') as outfile:
-                outfile.write(json_format.MessageToJson(response))
+                outfile.write(json_string)
 
             with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.vision.txt"), 'w') as outfile:
                 outfile.write(response.full_text_annotation.text)
@@ -91,11 +92,11 @@ class GoogleOCREngine(OCREngine):
                 json_string = cachefile.read().replace('\n', '')
             response = json_format.Parse(json_string, vision.types.AnnotateImageResponse())
 
-        # Create BBOX OCR Response from Google's response object
-        bboxresponse=self.bboxhelper.processGoogleOCRResponse(response.full_text_annotation,verbose=verbose)
+        # Create BBOX OCR Response from Google's JSON output
+        bboxresponse=self.bboxhelper.processGoogleOCRResponse(json_string,verbose=verbose)
         print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
-        converted=BBOXOCRResponse.from_google(response.full_text_annotation)
+        converted=BBOXOCRResponse.from_google(json.loads(json_string))
         with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.converted.json"), 'w') as outfile:
             outfile.write(json.dumps(converted.__dict__, default = lambda o: o.__dict__, indent=4))
 

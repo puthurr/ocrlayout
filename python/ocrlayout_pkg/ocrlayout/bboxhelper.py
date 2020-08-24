@@ -206,15 +206,15 @@ class BBOXNormalizedLine():
         for bb in range(4):
             points.append(BBOXPoint(0,0))
         # 
-        points[0].X = line_boxes[0][0].x 
-        points[0].Y = line_boxes[0][0].y 
-        points[3].X = line_boxes[0][3].x 
-        points[3].Y = line_boxes[0][3].y
+        points[0].X = line_boxes[0][0]["x"] 
+        points[0].Y = line_boxes[0][0]["y"] 
+        points[3].X = line_boxes[0][3]["x"] 
+        points[3].Y = line_boxes[0][3]["y"]
 
-        points[1].X = line_boxes[-1][1].x 
-        points[1].Y = line_boxes[-1][1].y 
-        points[2].X = line_boxes[-1][2].x 
-        points[2].Y = line_boxes[-1][2].y 
+        points[1].X = line_boxes[-1][1]["x"] 
+        points[1].Y = line_boxes[-1][1]["y"] 
+        points[2].X = line_boxes[-1][2]["x"] 
+        points[2].Y = line_boxes[-1][2]["y"] 
 
         return BBOXNormalizedLine(Idx=line_counter,BoundingBox=points,Text=line_text,words_count=words_count)
 
@@ -314,20 +314,21 @@ class BBOXPageLayout():
         line_text =""
         line_boxes=[]
         line_words_count=0
-
-        bboxlogger.debug("Google|Page shape (Height,Width) ({0},{1})".format(page.height,page.width))
+        page_width=page["width"]
+        page_height=page["height"]
+        bboxlogger.debug("Google|Page shape (Height,Width) ({0},{1})".format(page_height,page_width))
         # Create the concept of lines for Google ocr response. 
-        for idb, block in enumerate(page.blocks):
-            for paragraph in block.paragraphs:
-                pagearray = np.zeros((page.height,page.width))
+        for idb, block in enumerate(page["blocks"]):
+            for paragraph in block["paragraphs"]:
+                pagearray = np.zeros((page_height,page_width))
                 # parray=page[paragraph.bounding_box.vertices[0].y:paragraph.bounding_box.vertices[2].y,paragraph.bounding_box.vertices[0].x:paragraph.bounding_box.vertices[2].x]
-                bboxlogger.debug("Google|Paragraph {0} of {1} words".format(str(idb),str(len(paragraph.words))))
-                for widx, word in enumerate(paragraph.words):
+                bboxlogger.debug("Google|Paragraph {0} of {1} words".format(str(idb),str(len(paragraph["words"]))))
+                for widx, word in enumerate(paragraph["words"]):
                     # Put the word presence in the paragraph matrix 
-                    low_y=word.bounding_box.vertices[0].y-1
-                    high_y=word.bounding_box.vertices[2].y
-                    low_x=word.bounding_box.vertices[0].x-1
-                    high_x=word.bounding_box.vertices[2].x
+                    low_y=word["boundingBox"]["vertices"][0]["y"]-1
+                    high_y=word["boundingBox"]["vertices"][2]["y"]
+                    low_x=word["boundingBox"]["vertices"][0]["x"]-1
+                    high_x=word["boundingBox"]["vertices"][2]["x"]
                     # the Min,Max allows us to handle vertical words. 
                     pagearray[min(low_y,high_y):max(low_y,high_y),min(low_x,high_x):max(low_x,high_x)]=widx+1
 
@@ -336,15 +337,15 @@ class BBOXPageLayout():
                 # Assign the first cluster as current
                 currentTextColumn = columns[0]
 
-                for widx, word in enumerate(paragraph.words):
+                for widx, word in enumerate(paragraph["words"]):
                     if len(columns)==1:
                         foundTextColumn = columns[0]
                     else:                       
                         # Find the word cluster
                         for cidx,column in enumerate(columns):
-                            if word.bounding_box.vertices[0].x >= column[0] and word.bounding_box.vertices[0].x <= column[1]:
+                            if word["boundingBox"]["vertices"][0]["x"] >= column[0] and word["boundingBox"]["vertices"][0]["x"] <= column[1]:
                                 foundTextColumn = column
-                                bboxlogger.debug("Google|Word Idx:{0} X:{1} in Cluster {2}".format(widx,word.bounding_box.vertices[0].x,column))
+                                bboxlogger.debug("Google|Word Idx:{0} X:{1} in Cluster {2}".format(widx,word["boundingBox"]["vertices"][0]["x"],column))
 
                     # Line break on text columns change.
                     if len(line_boxes)>0:
@@ -361,15 +362,16 @@ class BBOXPageLayout():
                                 line_words_count=0
 
                     currentTextColumn=foundTextColumn
-                    line_boxes.append(word.bounding_box.vertices)                   
+                    line_boxes.append(word["boundingBox"]["vertices"])                   
                     line_words_count+=1
-                    for symbol in word.symbols:
-                        line_text+=symbol.text
-                        if symbol.property.detected_break:
-                            if symbol.property.detected_break.type in [1,2]:
+                    for symbol in word["symbols"]:
+                        line_text+=symbol["text"]
+                        if "detectedBreak" in symbol["property"]:
+                            bboxlogger.debug("Google|Detected Break {0}".format(str(symbol["property"]["detectedBreak"]["type"])))                            
+                            if symbol["property"]["detectedBreak"]["type"] in ['SPACE','SURE_SPACE',1,2]:
                                 line_text+=" "
-                            elif symbol.property.detected_break.type in [3,5]:
-                                bboxlogger.debug("Google|Detected Line Break {0}| {1} {2}".format(str(symbol.property.detected_break.type),str(line_counter),line_text))
+                            elif symbol["property"]["detectedBreak"]["type"] in ['EOL_SURE_SPACE','LINE_BREAK',3,5]:
+                                bboxlogger.debug("Google|Detected Line Break {0}| {1} {2}".format(str(symbol["property"]["detectedBreak"]["type"]),str(line_counter),line_text))
                                 # Line Break
                                 line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes,words_count=line_words_count)
                                 lines.append(line)
@@ -378,7 +380,7 @@ class BBOXPageLayout():
                                 line_boxes.clear()
                                 line_words_count=0                                
 
-        return cls(Id=1,Width=page.width,Height=page.height,Lines=lines)
+        return cls(Id=1,Width=page_width,Height=page_height,Lines=lines)
 
     @classmethod
     def from_aws(cls, page, width, height):
@@ -465,9 +467,10 @@ class BBOXOCRResponse():
         return cls(status=status,recognitionResults=pages)
     
     @classmethod
-    def from_google(cls, document):
-        pages = list(map(BBOXPageLayout.from_google,document.pages))
-        return cls(status="success",original_text=document.text,recognitionResults=pages)
+    def from_google(cls, data):
+        if "fullTextAnnotation" in data:
+            pages = list(map(BBOXPageLayout.from_google,data["fullTextAnnotation"]["pages"]))
+            return cls(status="success",original_text=data["fullTextAnnotation"]["text"],recognitionResults=pages)
 
     @classmethod
     def from_aws_detect_document_text(cls, data, width, height):
@@ -522,16 +525,13 @@ class BBoxHelper():
         if verbose:
             bboxlogger.setLevel(logging.DEBUG)
             
-        # #load the input json into a response object
-        # if isinstance(input,str):
-        #     response=BBOXOCRResponse.from_azure(json.loads(input))
-        # if isinstance(input,dict):
-        #     response=BBOXOCRResponse.from_azure(input)
-        # elif isinstance(input,BBOXOCRResponse):
-        #     response=input
-
-        #Create an BBOXOCRResponse object from Google input
-        response=BBOXOCRResponse.from_google(input)
+        #load the input json into a response object
+        if isinstance(input,str):
+            response=BBOXOCRResponse.from_google(json.loads(input))
+        if isinstance(input,dict):
+            response=BBOXOCRResponse.from_google(input)
+        elif isinstance(input,BBOXOCRResponse):
+            response=input
 
         return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
 
