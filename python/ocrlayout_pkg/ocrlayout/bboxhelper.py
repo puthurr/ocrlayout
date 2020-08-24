@@ -50,6 +50,7 @@ class BBOXPoint():
         return BBOXPoint(self.Y,self.X)   
     def __repr__(self):
         return "[{0},{1}]".format(str(self.X),str(self.Y))
+
     @classmethod
     def from_azure(cls, data):
         return cls(**data)
@@ -82,6 +83,10 @@ class BBOXPoint():
         y = array[7]
         points.append(BBOXPoint(x,y,ppi))
         return points
+
+    @classmethod
+    def from_aws(cls, data):
+        return cls(**data)
 
 class BBOXNormalizedLine():
     def __init__(self, Idx, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avg_height=0.0, std_height=0.0, words_count=0):
@@ -213,6 +218,18 @@ class BBOXNormalizedLine():
 
         return BBOXNormalizedLine(Idx=line_counter,BoundingBox=points,Text=line_text,words_count=words_count)
 
+    @classmethod
+    def from_aws(cls, index, data):
+        points = list()
+        line_text=''
+        array=data["Geometry"]["Polygon"]
+        points = list(map(BBOXPoint.from_aws, [x for x in array]))
+
+        if "Text" in data:
+            line_text=data["Text"]
+
+        return cls(Idx=index,BoundingBox=points,Text=line_text,std_height=0,avg_height=0,words_count=0)
+
 class BBOXPageLayout():
     def __init__(self, Id:int = 0,clockwiseorientation:float = 0.0,Width:float = 0.0,Height:float = 0.0,Unit:str = "pixel",Language:str="en",Text:str=None,Lines:List[BBOXNormalizedLine]=None,ppi=1):
         self.id=Id
@@ -224,6 +241,7 @@ class BBOXPageLayout():
         self.text=Text
         self.lines=Lines
         self.ppi=ppi
+
     @classmethod
     def from_azure(cls, page):
         lines=list()
@@ -362,6 +380,57 @@ class BBOXPageLayout():
 
         return cls(Id=1,Width=page.width,Height=page.height,Lines=lines)
 
+    @classmethod
+    def from_aws(cls, page, width, height):
+        lines=list()
+
+        # TODO #1
+        if "unit" in page:
+            page_unit=page["unit"]
+            if page_unit=="inch":
+                # Azure OCR response doesn't provide the ppi per page
+                # so we need to determine it for normalizing the processing of lines
+                # ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
+                
+                # decimal precision on Azure is set to 4, so we can set a 10000 to normalize the box and 
+                # not convert to pixel
+                ppi=10000
+            else:
+                ppi=1
+        else:
+            page_unit="pixel"
+            ppi=1
+
+        # Page Width / Heigth
+        if "width" in page:
+            page_width=page["width"]
+            page_height=page["height"]
+        else:
+            page_width=width
+            page_height=height
+
+        # Denormalize the Geometry/Polygon
+        for block in page:
+            for coordinate in block["Geometry"]["Polygon"]:
+                coordinate["X"]=coordinate["X"]*width
+                coordinate["Y"]=coordinate["Y"]*height
+
+        lines=[BBOXNormalizedLine.from_aws(i,line) for i,line in enumerate(page) if (line["BlockType"] == "LINE")]
+
+        bboxlogger.debug("AWS|Page shape (Height,Width) ({0},{1})".format(page_width,page_height))
+
+        # AWS doesn't provide an angle or text orientation
+        angle=0.0
+
+        # Page Id
+        if "page" in page:
+            page_id=page["page"]
+        else:
+            page_id="1"
+
+        return cls(Id=page_id,clockwiseorientation=angle,Width=page_width,Height=page_height,Unit=page_unit,Lines=lines,ppi=ppi)
+
+
 class BBOXOCRResponse():
     def __init__(self,status:str = None,Text:str=None,original_text:str=None,recognitionResults:List[BBOXPageLayout]=None):
         self.status =status
@@ -394,10 +463,22 @@ class BBOXOCRResponse():
             status = "ocrsuccess"
 
         return cls(status=status,recognitionResults=pages)
+    
     @classmethod
     def from_google(cls, document):
         pages = list(map(BBOXPageLayout.from_google,document.pages))
         return cls(status="success",original_text=document.text,recognitionResults=pages)
+
+    @classmethod
+    def from_aws_detect_document_text(cls, data, width, height):
+        pages=list()
+        pages.append(BBOXPageLayout.from_aws(data["Blocks"],width,height))
+        if "status" in data:
+            status = data["status"]
+        else:
+            status = "awssuccess"
+
+        return cls(status=status,recognitionResults=pages)
 
 class BBoxHelper():
 
@@ -441,10 +522,36 @@ class BBoxHelper():
         if verbose:
             bboxlogger.setLevel(logging.DEBUG)
             
+        # #load the input json into a response object
+        # if isinstance(input,str):
+        #     response=BBOXOCRResponse.from_azure(json.loads(input))
+        # if isinstance(input,dict):
+        #     response=BBOXOCRResponse.from_azure(input)
+        # elif isinstance(input,BBOXOCRResponse):
+        #     response=input
+
         #Create an BBOXOCRResponse object from Google input
         response=BBOXOCRResponse.from_google(input)
 
         return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+
+    def processAWSOCRResponse(self,input,width,height,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
+        """ processAWSOCRResponse method
+            Process an OCR Response input from AWS and returns a new BBox format OCR response.
+        """
+        if verbose:
+            bboxlogger.setLevel(logging.DEBUG)
+
+        #load the input json into a response object
+        if isinstance(input,str):
+            response=BBOXOCRResponse.from_aws_detect_document_text(json.loads(input),width,height)
+        if isinstance(input,dict):
+            response=BBOXOCRResponse.from_aws_detect_document_text(input,width,height)
+        elif isinstance(input,BBOXOCRResponse):
+            response=input
+
+        return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+
 
     def __processOCRResponse(self, response, sortingAlgo=BBoxSort.contoursSort, boxSeparator:str = None):
         """processOCRResponse method

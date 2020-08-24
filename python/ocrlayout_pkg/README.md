@@ -10,31 +10,37 @@ Another way to see would be to cluster the lines of text based on their position
 - Modern browser Read Aloud feature : it becomes easier to build solutions to read aloud an image, increasing verbal narrative of visual information. 
 - Machine Translation : get more accurate MT output as you can retain more context. 
 - Sentences/Paragraph Classification : from scanned-base images i.e. contracts, having a more meaninful textual output allows you to classify it at a granular level in terms of risk, personal clause or conditions. 
-### Ocr Output Support
+## Ocr Output Support
 Today bboxhelper supports the output of 
+### AZURE
 * Azure Batch Read API response. 
 https://docs.microsoft.com/en-us/azure/cognitive-services/computer-vision/concept-recognizing-text#read-api
 * Azure Computer Vision SDK Python Sample
 https://github.com/Azure/azure-sdk-for-python/tree/76a0d91c32a79561a7d5666e421908e7c4cffc6a/sdk/cognitiveservices/azure-cognitiveservices-vision-computervision
-
-AND 
-
+### GOOGLE 
 * Google Vision API Detect Text
 https://cloud.google.com/vision/docs/ocr
 https://cloud.google.com/vision/docs/ocr#vision_text_detection-python
 * Google Vision Python Sample
 https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/vision/cloud-client/document_text/doctext.py
+### AWS - Detect Document Text
+* AWS Textextract
+Detects text in the input document. Amazon Textract can detect lines of text and the words that make up a line of text. The input document must be an image in JPEG or PNG format.
+https://aws.amazon.com/textract/features/
+https://docs.aws.amazon.com/textract/latest/dg/how-it-works-detecting.html
+https://docs.aws.amazon.com/textract/latest/dg/API_DetectDocumentText.html
 
 ## BBoxHelper - Get Started
 More information to get started can be found documentation of this repository: [documentation](https://puthurr.github.io/getting-started/).
 
-### Known Limitations 
+## Known Limitations 
 More information on known [limitations](https://puthurr.github.io/known-limitations/).
 
 ## Upcoming improvements
 * hOCR Suppport https://en.wikipedia.org/wiki/HOCR [tools](https://github.com/tmbdev/hocr-tools)
 * asyncio support for pages processing 
-* Google OCR for documents
+* Google OCR for documents (PDF)
+* AWS OCR for documents (PDF)
 # Release History
 ## 0.7 (2020-07-29)
 - Configurable merge line character (default is a single space)
