@@ -366,19 +366,20 @@ class BBOXPageLayout():
                     line_words_count+=1
                     for symbol in word["symbols"]:
                         line_text+=symbol["text"]
-                        if "detectedBreak" in symbol["property"]:
-                            bboxlogger.debug("Google|Detected Break {0}".format(str(symbol["property"]["detectedBreak"]["type"])))                            
-                            if symbol["property"]["detectedBreak"]["type"] in ['SPACE','SURE_SPACE',1,2]:
-                                line_text+=" "
-                            elif symbol["property"]["detectedBreak"]["type"] in ['EOL_SURE_SPACE','LINE_BREAK',3,5]:
-                                bboxlogger.debug("Google|Detected Line Break {0}| {1} {2}".format(str(symbol["property"]["detectedBreak"]["type"]),str(line_counter),line_text))
-                                # Line Break
-                                line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes,words_count=line_words_count)
-                                lines.append(line)
-                                line_text=""
-                                line_counter+=1
-                                line_boxes.clear()
-                                line_words_count=0                                
+                        if "property" in symbol:
+                            if "detectedBreak" in symbol["property"]:
+                                bboxlogger.debug("Google|Detected Break {0}".format(str(symbol["property"]["detectedBreak"]["type"])))                            
+                                if symbol["property"]["detectedBreak"]["type"] in ['SPACE','SURE_SPACE',1,2]:
+                                    line_text+=" "
+                                elif symbol["property"]["detectedBreak"]["type"] in ['EOL_SURE_SPACE','LINE_BREAK',3,5]:
+                                    bboxlogger.debug("Google|Detected Line Break {0}| {1} {2}".format(str(symbol["property"]["detectedBreak"]["type"]),str(line_counter),line_text))
+                                    # Line Break
+                                    line=BBOXNormalizedLine.from_google(line_counter,line_text,line_boxes,words_count=line_words_count)
+                                    lines.append(line)
+                                    line_text=""
+                                    line_counter+=1
+                                    line_boxes.clear()
+                                    line_words_count=0                                
 
         return cls(Id=1,Width=page_width,Height=page_height,Lines=lines)
 
@@ -516,7 +517,8 @@ class BBoxHelper():
         elif isinstance(input,BBOXOCRResponse):
             response=input
 
-        return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+        if response:
+            return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
 
     def processGoogleOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
         """ processGoogleOCRResponse method
@@ -533,7 +535,8 @@ class BBoxHelper():
         elif isinstance(input,BBOXOCRResponse):
             response=input
 
-        return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+        if response:
+            return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
 
     def processAWSOCRResponse(self,input,width,height,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
         """ processAWSOCRResponse method
@@ -550,7 +553,8 @@ class BBoxHelper():
         elif isinstance(input,BBOXOCRResponse):
             response=input
 
-        return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+        if response:
+            return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
 
 
     def __processOCRResponse(self, response, sortingAlgo=BBoxSort.contoursSort, boxSeparator:str = None):
