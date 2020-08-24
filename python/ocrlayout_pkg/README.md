@@ -24,7 +24,7 @@ https://cloud.google.com/vision/docs/ocr#vision_text_detection-python
 * Google Vision Python Sample
 https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/vision/cloud-client/document_text/doctext.py
 ### AWS - Detect Document Text
-* AWS Textextract
+* AWS Textract
 Detects text in the input document. Amazon Textract can detect lines of text and the words that make up a line of text. The input document must be an image in JPEG or PNG format.
 https://aws.amazon.com/textract/features/
 https://docs.aws.amazon.com/textract/latest/dg/how-it-works-detecting.html
