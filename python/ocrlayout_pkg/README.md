@@ -41,7 +41,12 @@ More information on known [limitations](https://puthurr.github.io/known-limitati
 * asyncio support for pages processing 
 * Google OCR for documents (PDF)
 * AWS OCR for documents (PDF)
+
 # Release History
+## 0.8 (2020-08-24)
+- Support for AWS Detect Document Text 
+- Google support refactored for consistency 
+- Simplify the bboxtester script
 ## 0.7 (2020-07-29)
 - Configurable merge line character (default is a single space)
 ## 0.6 (2020-07-09)
