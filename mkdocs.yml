@@ -4,8 +4,10 @@ site_author: 'Nicolas Uthurriague'
 nav:
   - Home: index.md
   - 'Getting Started': getting-started.md
-  - 'Azure OCR': azure.md
-  - 'Google OCR': google.md
+  - OCR Engines:
+    - 'Azure OCR': engines/azure.md
+    - 'Google OCR': engines/google.md
+    - 'AWS OCR': engines/aws.md
   - 'Sorting Strategy': sorting.md
   - Examples:
     - 'Simple Infographic': examples/infography1.md

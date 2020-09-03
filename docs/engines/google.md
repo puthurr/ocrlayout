@@ -64,13 +64,12 @@ We then pass the full_text_annotation **object** to the BBoxHelper processing me
 bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation)
 ```
 ### Behind the scene...
-To avoid adding OCR engines direct dependencies in the code, for Google OCR, we only support passing the full_text_annotation object in **processGoogleOCRResponse()**
-
+To avoid adding OCR engines direct dependencies in the code, for Google OCR, we only support passing the full_text_annotation object in **processGoogleOCRResponse()** whether the object is passed as JSON string, a JSON object (dict).
 We do similar iterations to build a line concept from Google annotation object.
 **bboxhelper.py**
 ```python
 class BBOXPageLayout():
-    #...
+...
     @classmethod
     def from_google(cls, page):
         lines=[]
@@ -84,37 +83,45 @@ class BBOXPageLayout():
                     # Line Break Logic 
                     for symbol in word.symbols:
                         # Line Break Logic based on symbol 
-        return cls(Id=1,Width=page.width,Height=page.height,Lines=lines)
+        ...
 
 class BBOXOCRResponse():
-    #...
+...
     @classmethod
-    def from_google(cls, document):
-        pages = list(map(BBOXPageLayout.from_google,document.pages))
-        return cls(status="success",original_text=document.text,recognitionResults=pages)
+    def from_google(cls, data):
+        if "fullTextAnnotation" in data:
+            pages = list(map(BBOXPageLayout.from_google,data["fullTextAnnotation"]["pages"]))
+            return cls(status="success",original_text=data["fullTextAnnotation"]["text"],recognitionResults=pages)
+...
 
 class BBoxHelper():
-    def processGoogleOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None):
+...
+    def processGoogleOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
         """ processGoogleOCRResponse method
             Process an OCR Response input from Google and returns a new BBox format OCR response.
         """
-        #Create an BBOXOCRResponse object from Google input
-        response=BBOXOCRResponse.from_google(input)
+        if verbose:
+            bboxlogger.setLevel(logging.DEBUG)
+            
+        #load the input json into a response object
+        if isinstance(input,str):
+            response=BBOXOCRResponse.from_google(json.loads(input))
+        if isinstance(input,dict):
+            response=BBOXOCRResponse.from_google(input)
+        elif isinstance(input,BBOXOCRResponse):
+            response=input
 
-        return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
-
+        if response:
+            return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+...
 ```
-### Reading the Google JSON response from a file 
+### Reading the Google JSON response from a file and process it 
 Our Google sample script shows how to read JSON string from a file and rebuild the Google response object 
 ```python
 # Use local OCR cached response when available
-with open(os.path.join(RESULTS_FOLDER, imgname+".google.vision.json"), 'r') as cachefile:
+with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.vision.json"), 'r') as cachefile:
     json_string = cachefile.read().replace('\n', '')
-# Hydrate Google annotation object
-response = json_format.Parse(json_string, vision.types.AnnotateImageResponse())
-```
-Call the processGoogleOCRResponse() as usual. 
-```python
-# Create BBOX OCR Response from Google's response object
-bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation)
+
+# Create BBOX OCR Response from Google's JSON output
+bboxresponse=self.bboxhelper.processGoogleOCRResponse(json_string,verbose=verbose)
 ```

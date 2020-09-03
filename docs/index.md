@@ -16,13 +16,14 @@ While OCR engines responses are fine for recall, they aren't necessary generatin
 - **Sentences/Paragraph Classification**: from scanned-base images i.e. contracts, having a more meaninful textual output allows you to classify it at a granular level in terms of risk, personal clause or conditions. 
 
 ## OCR Engines Support
-We supports Azure/Google respective Computer Vision API.
+We support Azure, Google & AWS text extraction OCR API.
 
->Our goal here is not to conduct a comparison between Azure & Google Computer Vision API but to provide a consistent way to output OCR text for further processing regardless of the underlying OCR Engine. 
+>Our goal here is not to conduct a comparison between all 3 majors providers but to provide a consistent way to output OCR text for further processing regardless of the underlying OCR Engine. 
 
-* [Azure Computer Vision Read API](https://docs.microsoft.com/en-us/azure/cognitive-services/   computer-vision/concept-recognizing-text#read-api)
-* [Azure Computer Vision OCR API](https://docs.microsoft.com/en-us/azure/cognitive-services/computer-vision/concept-recognizing-text#ocr-api)
-* [Google Vision API Detect Text](https://cloud.google.com/vision/docs/ocr#vision_text_detection-python)
+* [Azure Computer Vision - Read API](https://docs.microsoft.com/en-us/azure/cognitive-services/computer-vision/concept-recognizing-text#read-api)
+* [Azure Computer Vision - OCR API](https://docs.microsoft.com/en-us/azure/cognitive-services/computer-vision/concept-recognizing-text#ocr-api)
+* [Google Vision API - Detect Text](https://cloud.google.com/vision/docs/ocr#vision_text_detection-python)
+* [AWS Textextract - Detecting Text](https://docs.aws.amazon.com/textract/latest/dg/how-it-works-detecting.html)
 
 ## Examples
 Check out our **Examples** section to get a better feeling on how Bounding Box Helper could support better your OCR-related projects. 

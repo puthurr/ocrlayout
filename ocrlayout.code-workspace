@@ -5,6 +5,6 @@
 		}
 	],
 	"settings": {
-		"python.pythonPath": "/Users/nicolas/projects/OCRLayout/ocrlayout/python/venv/bin/python3"
+		"python.pythonPath": "/Users/nicolas/projects/ocrlayout/python/venv/bin/python3"
 	}
 }

@@ -146,7 +146,7 @@ feedstocks.
 
 Same as the previous, we see an Y-axis/X-axis sorting pattern emerging which brings a lot of inconsistent sentences. 
 
-### Azure BBoxing... 
+### Azure BBoxing
 Boxes are drawn on the original image. The numbers in red reprensent the blockid we use to sort the final boxes. See our [sorting](/sorting) section for more details. 
 ![Screenshot](img/image285.azure.bbox.jpg)
 #### Azure BBoxing text output
@@ -384,6 +384,191 @@ Decommissioning
 Once the reservoir of a field is sufficiently depleted to the extent that no further reserves can be economically recovered, the field will cease production Companies are legally required to decommission assets once they have ceased production, which the Oil and Gas Authority estimates will cost around £60 billion (in 2016 money). This process includes plugging and abandonment of wells and the removal of topsides, platforms, certain pipelines and subsea equipment.
 Processed gas enters The National Transmission System, or in some cases, components are stripped out and used as chemical feedstocks
 ```
+
+## AWS 
+The below image represents the raw AWS Textextract output where we drew each line of text bounding boxes. Yellow colored are the words, red is for lines. See [AWS Ocr](/engines/aws) for more details.
+![Screenshot](img/image285.aws.textextract.jpg)
+### AWS Raw Text output 
+```
+The Journey of Oi and Gas
+in the UK
+1-5+ years
+5-18 years
+1-10 years
+5-40 years
+6-15 years
+Seismic Surveying and
+Exploring and Appraising
+Final Investment Decision
+Production and Transportation
+Decommissioning
+Obtaining Licences
+Prospects
+and Development
+Given that most of the UK's oi and
+If successfully explored and
+Following development of wells
+It is common for investment in the
+Once the reservoir of a field is
+gas is offshore seismic surveying
+appraised, the partners will consider
+and facilities, the field will reach
+field to continue during production
+sufficiently depleted to the extent that
+vessels are used to help identify
+a range of development concepts
+first production.
+either through the drilling of more
+no further reserves can be economically
+where oil and gas may be present.
+development wells or construction
+recovered, the field will cease production.
+This process typically assesses
+Oi and gas are then produced and
+of new facilities.
+This enables oil and gas companies
+everything from facilities
+transported ashore via a network
+Companies are legally required to
+to target areas to explore.
+design to operating models and
+of subsea pipelines, or in some
+decommission assets once they have
+decommissioning
+cases for oi via tankers.
+ceased production, which the oil and
+The UK Government auctions off
+Gas Authority estimates will cost around
+licences to prospective bidders,
+Once finalised a Field Development
+E60 billion (in 2016 money).
+enabling exploration to take place.
+Plan and Gas (FDP) Authority is submitted for consideration to the oil
+This process includes plugging and
+and, when approved development
+abandonment of wells and the removal
+Once a licence has been obtained the
+can begin.
+of topsides platforms, certain pipelines
+next step Is to drill an exploration well
+and subsea equipment.
+to determine whether hydrocarbons
+are present.
+If successful, this is often followed
+by drilling of appraisa wells to
+better understand the reservoir's
+characteristics.
+From sitting deep
+This drilling is often undertaken by
+jack-up or semi-submersible mobile
+under the North rth Sea
+unseen and undeveloped
+drilling rigs,
+the journey a barrel of
+hydrocarbons takes
+MTOE
+to reach everyday
+household items is
+astounding
+Total Oil Supply
+76
+Gas is typically treated onshore
+at processing plants providing
+Indigenous Supply
+52
+the primary fuel for heating
+or sent to power plants for
+Unrefined Oil Import
+53
+conversion into electricity.
+Refined Oil Import
+38
+UK Oil and Gas Supply 2016
+Unrefined Oil Export
+38
+Gas is both delivered to and exported from the
+Refined Oil Export
+-27
+UK depending on varying international demand;
+via pipelines with Belgium ton-Zeebrugge
+Interconnector) the Netherlands (Bacton -Baigzand
+Pipeline) and the Republic of Ireland (export only).
+Total Gas Supply
+77
+Most ol is converted Into
+petroleum products such
+Gas demand Is also met via liquefied
+Indigenous Supply
+40
+as feedstock and fuel for
+natura gas Imports. The UK
+transport or other
+imports both crude and
+industrial use
+refined oi via tankers
+Natural Gas Import
+46
+to mneet domestic
+demand.
+Natural Gas Export
+-10
+Processed gas enters
+the Nationa Transmission
+System ot in same cases
+components are stripped
+out and used as chemical
+feedstocks
+```
+### AWS BBoxing 
+Boxes are drawn on the original image. The numbers in red reprensent the blockid we use to sort the final boxes. See our [sorting](/sorting) section for more details. 
+![Screenshot](img/image285.aws.textextract.bbox.jpg)
+#### AWS BBoxing text output
+```
+The Journey of Oi and Gas in the UK
+1-5+ years
+5-18 years
+1-10 years
+Seismic Surveying and Obtaining Licences
+Exploring and Appraising Prospects
+Final Investment Decision and Development
+The UK Government auctions off licences to prospective bidders, enabling exploration to take place.
+Given that most of the UK's oi and gas is offshore seismic surveying vessels are used to help identify where oil and gas may be present.
+This enables oil and gas companies to target areas to explore.
+Once a licence has been obtained the next step Is to drill an exploration well to determine whether hydrocarbons are present. If successful, this is often followed by drilling of appraisa wells to better understand the reservoir's characteristics.
+This process typically assesses everything from facilities design to operating models and decommissioning
+Once finalised a Field Development Plan and Gas (FDP) Authority is submitted for consideration to the oil and, when approved development can begin.
+If successfully explored and appraised, the partners will consider a range of development concepts
+From sitting deep under the North rth Sea unseen and undeveloped the journey a barrel of hydrocarbons takes to reach everyday household items is astounding
+This drilling is often undertaken by jack-up or semi-submersible mobile drilling rigs,
+Total Oil Supply Indigenous Supply
+MTOE
+76 52
+Unrefined Oil Import Refined Oil Import
+53 38
+Gas is both delivered to and exported from the UK depending on varying international demand; via pipelines with Belgium ton-Zeebrugge Interconnector) the Netherlands (Bacton -Baigzand Pipeline) and the Republic of Ireland (export only). Gas demand Is also met via liquefied natura gas Imports. The UK imports both crude and refined oi via tankers to mneet domestic demand.
+UK Oil and Gas Supply 2016
+Total Gas Supply Indigenous Supply
+Natural Gas Export
+Natural Gas Import
+Unrefined Oil Export Refined Oil Export
+38 -27 -10
+77 40
+46
+5-40 years
+Production and Transportation
+Following development of wells and facilities, the field will reach first production.
+Oi and gas are then produced and transported ashore via a network of subsea pipelines, or in some cases for oi via tankers.
+It is common for investment in the field to continue during production either through the drilling of more development wells or construction of new facilities.
+Gas is typically treated onshore at processing plants providing the primary fuel for heating or sent to power plants for conversion into electricity.
+Most ol is converted Into petroleum products such as feedstock and fuel for transport or other industrial use
+6-15 years
+Decommissioning
+Once the reservoir of a field is sufficiently depleted to the extent that no further reserves can be economically recovered, the field will cease production.
+Companies are legally required to decommission assets once they have ceased production, which the oil and Gas Authority estimates will cost around E60 billion (in 2016 money).
+This process includes plugging and abandonment of wells and the removal of topsides platforms, certain pipelines and subsea equipment.
+Processed gas enters the Nationa Transmission System ot in same cases components are stripped out and used as chemical feedstocks
+```
+
 ## Conclusion
 
 With this example we can see that both outputs are more aligned after BBoxing whether you use Azure OCR or Google OCR you would get a similar output. 

@@ -13,8 +13,8 @@ pip install ocrlayout
 from ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper
 ```
 ## Prepare your OCR engine(s) call(s)
-Depending on your preferred OCR service Microsoft Azure or Google
-### Microsoft Azure 
+Depending on your preferred OCR service Azure, Google or AWS, follow the corresponding instructions.
+### Azure 
 Set the below 2 environment variables in your OS env. 
 ```
 COMPUTERVISION_SUBSCRIPTION_KEY
@@ -26,41 +26,69 @@ COMPUTERVISION_SUBSCRIPTION_KEY="..."
 COMPUTERVISION_LOCATION="westeurope"
 ```
 ### Google 
-Refer to Google documentation to authenticate the [Google Client](https://cloud.google.com/vision/docs/ocr#set-up-your-gcp-project-and-authentication)
+Google documentation to authenticate the [Google Client](https://cloud.google.com/vision/docs/ocr#set-up-your-gcp-project-and-authentication)
+### AWS 
+AWS documentation to get started with [Amazon Textract](https://docs.aws.amazon.com/textract/latest/dg/getting-started.html)
 ## Calling the BBoxHelper main method
-if you are not familiar with Azure CV and/or Google Document Text detection first hands I would encourage you to jump the [Sample script](#bboxhelper-run-the-sample-script-in-github) section.
-#### For Azure
+if you are not familiar with Azure CV, Google & AWS Text detection first hands I would encourage you to jump the [Sample script](#bboxhelper-run-the-sample-script-in-github) section as it would help getting hands on experience. 
+#### Azure
+>Azure response is a JSON string object hence we can send it as-is to processing after decoding. 
 ```python
 ocrresponse=image_analysis.response.content.decode("utf-8")
 ...
 bboxresponse=BBoxHelper().processAzureOCRResponse(ocrresponse)
 print(bboxresponse.text)
 ```
-
-#### For Google
+#### Google
 ```python
-response = client.document_text_detection(image=image)
+response = google_client.document_text_detection(image=image)
+# Convert the response object to JSON
+json_string=json_format.MessageToJson(response)
 ...
-bboxresponse=BBoxHelper().processGoogleOCRResponse(response.full_text_annotation)
+# Create BBOX OCR Response from Google's JSON output
+bboxresponse=BBoxHelper().processGoogleOCRResponse(json_string)
 print(bboxresponse.text)
 ```
->Only passing the full_text_annotation object is supported at the moment.
-#### Notes
-The BBoxHelper().processAzureOCRResponse() method will accept a string, dict (JSON) or BBOXOCRResponse instance. 
+>Passing the full_text_annotation object itself will not work anymore (ocrlayout>=0.8), only a JSON string or dict object are supported hence the JSON MessageToJson invocation.
 
-Passing a dict object (really if you want to)
+#### AWS 
+>AWS response is Dictionary-based object hence we can send it as-is to processing. 
 ```python
-bboxresponse=BBoxHelper().processAzureOCRResponse(json.loads(ocrresponse))
+# Amazon Textract client
+textract = boto3.client('textract')
+# Call Amazon Textract
+ocrresponse = textract.detect_document_text(Document={'Bytes': bytes_test })
+# Getting the width and height of the image
+imagefn=os.path.join(IMAGES_FOLDER, filename)
+image = Image.open(imagefn)
+width, height = image.size
+# Create BBOX OCR Response from AWS string response
+bboxresponse=BBoxHelper().processAWSOCRResponse(ocrresponse,width,height,verbose=verbose)
 ```
-Creating a non-optimized BBOXOCRResponse object
+#### Notes
+The BBoxHelper().processXXXOCRResponse() method will accept a JSON string, JSON/Dictionary object or existing BBOXOCRResponse object. 
+
+All processXXXOCRResponse methods will check on the input object type to convert it to a BBOXOCRResponse object.
+
 ```python
-ocrresponse=BBOXOCRResponse.from_azure(ocrresponse)
+# Load the input into a BBOXOCRResponse object for processing
+if isinstance(input,str):
+    response=BBOXOCRResponse.from_xxx(json.loads(input))
+if isinstance(input,dict):
+    response=BBOXOCRResponse.from_xxx(input)
+elif isinstance(input,BBOXOCRResponse):
+    response=input
 ```
-**Important** Passing an existing BBOXOCRResponse object to BBoxHelper.processAzureOCRResponse() will modify it.
+Once the input is converted to an non-optimized BBOXOCRResponse object it goes into the processing phase. 
+```python
+if response:
+    return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+```
+
+**Important** Passing an existing BBOXOCRResponse object to any BBoxHelper.processXXXOCRResponse() method will modify the object.
 
 If you need to keep the "original" BBOXOCRResponse make sure to do a copy.deepcopy() beforehands.
 ```python
-ocrresponse=BBOXOCRResponse.from_azure(ocrresponse)
 bboxresponse=BBoxHelper().processAzureOCRResponse(copy.deepcopy(ocrresponse))
 ```
 This could be usefull for evaluating OCR Engine(s) quality response (see the sample script) and ocrlayout optimization (before/after).
