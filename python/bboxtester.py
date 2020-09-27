@@ -1,20 +1,14 @@
-import io
-import json
-import logging
 import os
 import os.path
 import sys
-import types
 import time
-import requests
 
 from enum import Enum
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
-import cv2
 import numpy as np
-import boto3 
+from timeit import default_timer as timer
 
 try:
     from inspect import getfullargspec as get_arg_spec
@@ -41,11 +35,14 @@ bboxhelper=BBoxHelper(customlogfilepath=os.path.join(os.path.dirname(os.path.rea
 IMAGES_FOLDER = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), "../images")
 
+# Put the version we're testing here so we can control regression a bit
+VERSION='v0.9'
+
 RESULTS_FOLDER = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), "../tests-results")
+    os.path.realpath(__file__)), "../tests-results."+VERSION)
 
-ocrengines=[ AWSOCREngine("AWS",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER), GoogleOCREngine("Google",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER), AzureOCREngine("AZURE OCR",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER), AzureReadEngine("Azure READ",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER) ]
-
+# ocrengines=[ AWSOCREngine("AWS",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER), GoogleOCREngine("Google",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER), AzureOCREngine("AZURE OCR",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER), AzureReadEngine("Azure READ",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER) ]
+ocrengines=[ AzureReadEngine("Azure READ",bboxhelper, IMAGES_FOLDER, RESULTS_FOLDER) ]
 
 def iterate_all_images(ocrengines=[],filter=None,callOCR=True,verbose=False):
     """OCR Text detection for all images 
@@ -59,6 +56,9 @@ def iterate_all_images(ocrengines=[],filter=None,callOCR=True,verbose=False):
             continue
         imgfullpath=os.path.join(IMAGES_FOLDER, filename)
 
+        start = timer()
+        print(f"{filename} started at {time.strftime('%X')}")
+
         p = Path(filename)
         (imgname,imgext) = os.path.splitext(p.name)
         if imgext not in '.pdf':
@@ -66,6 +66,10 @@ def iterate_all_images(ocrengines=[],filter=None,callOCR=True,verbose=False):
 
         for engine in ocrengines:
             engine.detect_text(imgfullpath, callOCR, verbose)
+
+        end = timer()
+        print(f"{filename} finished at {time.strftime('%X')}")
+        print(f"Execution time in seconds: {end - start}") # Time in seconds, e.g. 5.38091952400282
 
 
 if __name__ == "__main__":
@@ -76,7 +80,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Call OCR outputs for a given image or images dir')
     parser.add_argument('--image',type=str,required=False,help='Process a single image',default=None)
     parser.add_argument('--imagesdir',type=str,required=False,help='Process all images contained in the given directory',default=IMAGES_FOLDER)
-    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="")
+    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="infography")
     parser.add_argument('--outputdir',type=str,required=False,help='Define where all outputs will be stored',default=RESULTS_FOLDER)
     parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service',default=False)
     parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level',default=False)

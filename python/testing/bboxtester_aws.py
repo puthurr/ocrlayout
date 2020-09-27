@@ -128,7 +128,7 @@ class AWSOCREngine(OCREngine):
                     OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
                     OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox"+imgext))
                 else:
-                    print("BBOX Helper Invalid Response. Input was {}".format(json_string))             
+                    print("BBOX Helper Invalid Response. Input was {}".format(ocrresponse))             
 
         except Exception as ex:
             print(ex)

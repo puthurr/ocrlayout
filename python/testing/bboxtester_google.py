@@ -90,7 +90,6 @@ class GoogleOCREngine(OCREngine):
             # Use local OCR cached response when available
             with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.vision.json"), 'r') as cachefile:
                 json_string = cachefile.read().replace('\n', '')
-            response = json_format.Parse(json_string, vision.types.AnnotateImageResponse())
 
         # Create BBOX OCR Response from Google's JSON output
         bboxresponse=self.bboxhelper.processGoogleOCRResponse(json_string,verbose=verbose)

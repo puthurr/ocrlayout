@@ -17,5 +17,5 @@ mkdocs
 mkdocs-material
 Pillow
 opencv-contrib-python
-numpy
 boto3
+numpy

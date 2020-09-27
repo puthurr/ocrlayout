@@ -203,14 +203,16 @@ class AzureReadEngine(AzureEngine):
 
         # Create BBOX OCR Response from Azure CV string response
         bboxresponse=self.bboxhelper.processAzureOCRResponse(ocrresponse,verbose=verbose)
-        print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
-        # Write the improved ocr response
-        with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox.json"), 'w') as outfile:
-            outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
-        # Write the improved ocr text
-        with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox.txt"), 'w') as outfile:
-            outfile.write(bboxresponse.text)
+        if bboxresponse:
+            print("BBOX Helper Response {}".format(bboxresponse.__dict__))
+
+            # Write the improved ocr response
+            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox.json"), 'w') as outfile:
+                outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
+            # Write the improved ocr text
+            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox.txt"), 'w') as outfile:
+                outfile.write(bboxresponse.text)
 
         try:
             if imgext not in '.pdf':
@@ -238,9 +240,10 @@ class AzureReadEngine(AzureEngine):
 
                 OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, imgname+".azure.read"+imgext))
 
-                # Write the BBOX resulted boxes image
-                OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-                OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox"+imgext))
+                if bboxresponse:
+                    # Write the BBOX resulted boxes image
+                    OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
+                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox"+imgext))
         except Exception as ex:
             print(ex)
             pass
