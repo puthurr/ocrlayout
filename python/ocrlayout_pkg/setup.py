@@ -3,7 +3,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 setuptools.setup(
     name='ocrlayout',  
-    version='0.8',
+    version='0.9',
     author="Nicolas Uthurriague",
     author_email="puthurr@hotmail.com",
     description="A Helper class to get more meaninful text out of common OCR outputs",
@@ -14,16 +14,17 @@ setuptools.setup(
     'Documentation': 'https://puthurr.github.io/',
     'Source': 'https://github.com/puthurr/ocrlayout/',
     'Tracker': 'https://github.com/puthurr/ocrlayout/issues',
+    'Recipes':'https://github.com/puthurr/ocrlayout-recipes'
     },
     license='MIT',
     packages=setuptools.find_packages(),
     package_data={'ocrlayout': ['config/*.*']},
     classifiers=[
-    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     ],
     keywords='OCR, Computer Vision, Text Extraction, Knowledge Mining, BoundingBoxes',
-    python_requires='>=3.7',
+    python_requires='>=3.8',
     install_requires=['numpy']
  )
