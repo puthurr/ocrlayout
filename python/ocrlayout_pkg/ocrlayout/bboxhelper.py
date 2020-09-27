@@ -1,18 +1,14 @@
 # Import required modules.
-import io
 import json
 import logging
 import logging.config
-import math
 import os
-import random
-import re
-import time
+import concurrent.futures
 import uuid
 from datetime import datetime
 from os import path
 from typing import List
-
+import random
 import numpy as np
 
 from .bboxutils import BBOXAnnotate, BBoxSort, BBoxUtils
@@ -38,6 +34,8 @@ json_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "conf
 with open(json_file_path) as json_file:
     bboxannotate=BBOXAnnotate.from_json(json.loads(json_file.read()))
 
+# random.randint(0,65535)
+BLOCK_ID_COUNTER=0
 #
 # Bounding Boxes OCR Classes
 #
@@ -90,6 +88,9 @@ class BBOXPoint():
 
 class BBOXNormalizedLine():
     def __init__(self, Idx, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avg_height=0.0, std_height=0.0, words_count=0):
+        global BLOCK_ID_COUNTER
+        BLOCK_ID_COUNTER+=1
+        self.id=BLOCK_ID_COUNTER
         self.start_idx=Idx+1
         self.end_idx=Idx+1
         self.boundingbox = BoundingBox
@@ -101,6 +102,8 @@ class BBOXNormalizedLine():
         self.avg_height = avg_height
         self.std_height = std_height
         self.rank=0.0
+        self.cluster=-1
+        self.subcluster=-1
 
     def calculateMedians(self):
         self.xmedian=(min(self.boundingbox[0].X,self.boundingbox[3].X) + max(self.boundingbox[1].X,self.boundingbox[2].X))/2
@@ -335,8 +338,8 @@ class BBOXPageLayout():
                 columns=BBoxSort.findClusters(pagearray,axis=0,gapthreshhold=bboxconfig.config["pixel"].GoogleLineBreakThresholdInPixel)
 
                 # Assign the first cluster as current
-                currentTextColumn = columns[0]
-
+                foundTextColumn, currentTextColumn = columns[0]
+                
                 for widx, word in enumerate(paragraph["words"]):
                     if len(columns)==1:
                         foundTextColumn = columns[0]
@@ -433,7 +436,6 @@ class BBOXPageLayout():
 
         return cls(Id=page_id,clockwiseorientation=angle,Width=page_width,Height=page_height,Unit=page_unit,Lines=lines,ppi=ppi)
 
-
 class BBOXOCRResponse():
     def __init__(self,status:str = None,Text:str=None,original_text:str=None,recognitionResults:List[BBOXPageLayout]=None):
         self.status =status
@@ -484,6 +486,9 @@ class BBOXOCRResponse():
 
         return cls(status=status,recognitionResults=pages)
 
+#
+# BBoxHelper Main Class
+#
 class BBoxHelper():
 
     # Support to use a custom configuration, annotation and logging file.
@@ -512,10 +517,12 @@ class BBoxHelper():
         #load the input json into a response object
         if isinstance(input,str):
             response=BBOXOCRResponse.from_azure(json.loads(input))
-        if isinstance(input,dict):
+        elif isinstance(input,dict):
             response=BBOXOCRResponse.from_azure(input)
         elif isinstance(input,BBOXOCRResponse):
             response=input
+        else:
+            return None
 
         if response:
             return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
@@ -530,10 +537,12 @@ class BBoxHelper():
         #load the input json into a response object
         if isinstance(input,str):
             response=BBOXOCRResponse.from_google(json.loads(input))
-        if isinstance(input,dict):
+        elif isinstance(input,dict):
             response=BBOXOCRResponse.from_google(input)
         elif isinstance(input,BBOXOCRResponse):
             response=input
+        else:
+            return None
 
         if response:
             return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
@@ -548,84 +557,118 @@ class BBoxHelper():
         #load the input json into a response object
         if isinstance(input,str):
             response=BBOXOCRResponse.from_aws_detect_document_text(json.loads(input),width,height)
-        if isinstance(input,dict):
+        elif isinstance(input,dict):
             response=BBOXOCRResponse.from_aws_detect_document_text(input,width,height)
         elif isinstance(input,BBOXOCRResponse):
             response=input
+        else:
+            return None
 
         if response:
             return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
 
+    def __applyRotation(self,page,initialRotation=0):
+        """__applyRotation method
+        """
+        rotation = round(page.clockwiseorientation,0)
+        bboxlogger.debug("{0}|Orientation {1}".format(str(page.id),str(rotation)))
+        page_width=page.width
+        page_height=page.height
+        rotation_threshold=1
+        applied_rotation=initialRotation
+
+        # Bounding Boxes Orientation
+        # if ( rotation != 0):
+        #     # TODO Do the Math for clockwise orientation
+        #     for line in page.lines:
+        #         bboxlogger.debug("Before rotation {}".format(line.boundingbox))
+        #         test = BBoxUtils.rotateLineBoundingBox(line.boundingbox, -1*page.clockwiseorientation)
+        #         bboxlogger.debug("After rotation 1 {}".format(test))
+        #         test = BBoxUtils.rotateLineBoundingBox(line.boundingbox, page.clockwiseorientation)
+        #         bboxlogger.debug("After rotation 2 {}".format(test))
+
+        # if (rotation >= 360-1 or rotation == 0):
+        if rotation in range(360-rotation_threshold,360+rotation_threshold) or rotation in range(-rotation_threshold,rotation_threshold):
+            bboxlogger.debug("no rotation adjustment required")
+        # elif (rotation >= 270-1) or rotation in range(-180,-90):
+        elif rotation in range(270-rotation_threshold,270+rotation_threshold) or rotation in range(-90-rotation_threshold,-90+rotation_threshold):
+            applied_rotation=90
+            # //Rotate 90 clockwise
+            for line in page.lines:
+                line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, applied_rotation)
+                line.calculateMedians()
+            # Switch W/H accordingly
+            page.width = page_height
+            page.height = page_width
+        # elif (rotation >= 180-1):
+        elif rotation in range (180-rotation_threshold,180+rotation_threshold) or rotation in range(-180-rotation_threshold,-180+rotation_threshold):
+            applied_rotation=180
+            # // Rotate 180
+            for line in page.lines:
+                line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, applied_rotation)
+                line.calculateMedians()
+        # elif (rotation >= 90-1):
+        elif rotation in range(90-rotation_threshold,90+rotation_threshold) or rotation in range(-270-rotation_threshold,-270+rotation_threshold):
+            applied_rotation=-90
+            # //Rotate 90 counterclockwise
+            for line in page.lines:
+                line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, applied_rotation)
+                line.calculateMedians()
+            # Switch W/H accordingly
+            page.width = page_height
+            page.height = page_width
+        else:
+            bboxlogger.warning("TODO rotation adjustment required ? ")
+
+        return (page, page_width, page_height, applied_rotation)
+
+    def __processPage(self,page, sortingAlgo=BBoxSort.contoursSort, boxSeparator:str = None):
+        bboxlogger.debug("{0}|Processing Page {0} with {1} lines.".format(str(page.id),len(page.lines)))
+        # Rotate the Bounding boxes when an angle is detected
+        page,page_width,page_height,applied_rotation = self.__applyRotation(page)
+
+        try:
+            # Invoke the page processing
+            page = self.__processOCRPageLayout(page, sortingAlgo, boxSeparator)
+        except Exception as identifier:
+            bboxlogger.warning("{0}|Exception ".format(identifier.__cause__))
+            pass
+
+        bboxlogger.debug("{0}|Processed Page {0} with {1} bbox lines.".format(str(page.id),len(page.lines)))
+
+        # Revert the rotation of the bounding boxes back to its original orientation
+        if applied_rotation!=0:
+            for line in page.lines:
+                line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, int(-applied_rotation))
+                # recalculate medians for drawing the boxes correctly
+                line.calculateMedians()
+            # Restore W/H 
+            page.width = page_width
+            page.height = page_height
+
+        return page 
 
     def __processOCRResponse(self, response, sortingAlgo=BBoxSort.contoursSort, boxSeparator:str = None):
         """processOCRResponse method
-        Process an OCR Response input (Azure,Google) and returns a new BBox format OCR response.
+        Process an OCR Response input (Azure,Google,AWS) and returns a new BBox format OCR response.
 
         Iterate through each page of the response and process it. Before processing we tackle the boxes 
         orientation. 
         """
         newtext = ""
 
-        # Rotate the BBox of each page based on its corresponding orientation
+        # Process each page concurrently - up to 10
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            for page in response.pages:
+                future_pages = {executor.submit(self.__processPage, page, sortingAlgo, boxSeparator):page.id}
+
+        # Build the final text output for the document with annotations if configured
         for page in response.pages:
-            bboxlogger.debug("{0}|Processing Page {0} with {1} lines.".format(str(page.id),len(page.lines)))
             if self.annotate and bboxannotate.pageTag:
                 newtext+=bboxannotate.pageTag[0]
-            rotation = round(page.clockwiseorientation,0)
-            bboxlogger.debug("{0}|Orientation {1}".format(str(page.id),str(rotation)))
-            page_width=page.width
-            page_height=page.height
-            # Bounding Boxes Orientation
-            # if ( rotation != 0):
-            #     # TODO Do the Math for clockwise orientation
-            #     for line in page.lines:
-            #         bboxlogger.debug("Before rotation {}".format(line.boundingbox))
-            #         test = BBoxUtils.rotateLineBoundingBox(line.boundingbox, -1*page.clockwiseorientation)
-            #         bboxlogger.debug("After rotation 1 {}".format(test))
-            #         test = BBoxUtils.rotateLineBoundingBox(line.boundingbox, page.clockwiseorientation)
-            #         bboxlogger.debug("After rotation 2 {}".format(test))
 
-            rotation_threshold=1
-
-            applied_rotation=0 
-            # if (rotation >= 360-1 or rotation == 0):
-            if rotation in range(360-rotation_threshold,360+rotation_threshold) or rotation in range(-rotation_threshold,rotation_threshold):
-                bboxlogger.debug("no rotation adjustment required")
-            # elif (rotation >= 270-1) or rotation in range(-180,-90):
-            elif rotation in range(270-rotation_threshold,270+rotation_threshold) or rotation in range(-90-rotation_threshold,-90+rotation_threshold):
-                applied_rotation=90
-                # //Rotate 90 clockwise
-                for line in page.lines:
-                    line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, applied_rotation)
-                    line.calculateMedians()
-                # Switch W/H accordingly
-                page.width = page_height
-                page.height = page_width
-            # elif (rotation >= 180-1):
-            elif rotation in range (180-rotation_threshold,180+rotation_threshold) or rotation in range(-180-rotation_threshold,-180+rotation_threshold):
-                applied_rotation=180
-                # // Rotate 180
-                for line in page.lines:
-                    line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, applied_rotation)
-                    line.calculateMedians()
-            # elif (rotation >= 90-1):
-            elif rotation in range(90-rotation_threshold,90+rotation_threshold) or rotation in range(-270-rotation_threshold,-270+rotation_threshold):
-                applied_rotation=-90
-                # //Rotate 90 counterclockwise
-                for line in page.lines:
-                    line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, applied_rotation)
-                    line.calculateMedians()
-                # Switch W/H accordingly
-                page.width = page_height
-                page.height = page_width
-            else:
-                bboxlogger.warning("TODO rotation adjustment required ? ")
-
-            # Invoke the page processing
-            page = self.processOCRPageLayout(page, sortingAlgo, boxSeparator)
-            newtext += page.text
-
-            bboxlogger.debug("{0}|Processed Page {0} with {1} bbox lines.".format(str(page.id),len(page.lines)))
+            if page.text:
+                newtext += page.text
 
             if self.annotate and bboxannotate.pageTag:
                 newtext+=bboxannotate.pageTag[1]
@@ -634,18 +677,7 @@ class BBoxHelper():
                 # Default page separator
                 newtext += os.linesep
 
-            # Revert the rotation of the bounding boxes back to its original orientation
-            if applied_rotation!=0:
-                for line in page.lines:
-                    line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, int(-applied_rotation))
-                    # recalculate medians for drawing the boxes correctly
-                    line.calculateMedians()
-                # Restore W/H 
-                page.width = page_width
-                page.height = page_height
-
         response.text = str(newtext)
-
         return response
 
     def __processLineBoundingBoxes(self, lines, alignment, unit, ppi): 
@@ -667,6 +699,7 @@ class BBoxHelper():
             XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.xmedian,o.boundingbox[boxref].Y))
         else:
             bboxlogger.error("__processLineBoundingBoxes : Unknown text alignment")
+            XSortedList=[]
 
         bboxlogger.debug("bounding boxes count {}".format(len(XSortedList)))
 
@@ -732,15 +765,10 @@ class BBoxHelper():
                 regiony = line.boundingbox[2].Y
         return XSortedList
 
-    def processOCRPageLayout(self, input_json, sortingAlgo=None, boxSeparator:str = None):
+    def __processOCRPageLayout(self, page:BBOXPageLayout, sortingAlgo=None, boxSeparator:str = None):
         """ processOCRPageLayout method
             Process a single page from an OCR input, returns the same page with enhanced boxing data & text.
         """
-        if isinstance(input_json,str):
-            page=BBOXPageLayout.from_azure(json.loads(input_json))
-        elif isinstance(input_json,BBOXPageLayout):
-            page=input_json
-
         inlines=[o for o in page.lines if o.merged == False]
         bboxlogger.debug("{1}|Input # lines {0}".format(len(inlines),str(page.id)))
 
@@ -750,7 +778,7 @@ class BBoxHelper():
             page.lines = self.__processLineBoundingBoxes(page.lines,alignment,page.unit,page.ppi)
 
         # Another pass on LeftAlignment
-        bboxlogger.debug("{1}-2|Processing {0}".format(alignment,str(page.id)))
+        bboxlogger.debug("{1}-2|Processing {0}".format(LeftAlignment,str(page.id)))
         page.lines = self.__processLineBoundingBoxes(page.lines,LeftAlignment,page.unit,page.ppi)
 
         outlines=[o for o in page.lines if o.merged == False]

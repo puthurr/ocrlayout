@@ -1,5 +1,4 @@
 # Import required modules.
-import io
 import json
 import os
 from os import path
