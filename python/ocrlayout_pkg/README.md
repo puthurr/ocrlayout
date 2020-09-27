@@ -1,16 +1,18 @@
-# OcrLayout Library
+# OCRLAYOUT Library
 Provides the ability to get more meaninful text out of common OCR outputs. It manipulates the Bounding Boxes of lines to rebuild a page layout to approximate human-reading experience.  
 ## Problem Statement
-While OCR processing images containing lots of textual information, it becomes relevant to assemble the generated text into meaninful lines of text combining related paragraphs or sentences. 
+Current OCR engines responses are focus on text recall. Ocrlayout tries to go a step further by re-ordering the lines of text so it'd approach a human-reading behavior. 
+
+When images contains a lot of textual information, it becomes relevant to assemble the generated meaninful blocks of text enabling better scenarios. 
 
 Another way to see would be to cluster the lines of text based on their positions/coordinates in the original content. 
 ## More meaningfull output for what? 
-- Text Analytics you may leverage any Text Analytics such as Key Phrases, Entities Extraction with more confidence of its outcome
-- Accessibility : Any infographic becomes alive, overcoming the alt text feature.
-- Modern browser Read Aloud feature : it becomes easier to build solutions to read aloud an image, increasing verbal narrative of visual information. 
-- Machine Translation : get more accurate MT output as you can retain more context. 
-- Sentences/Paragraph Classification : from scanned-base images i.e. contracts, having a more meaninful textual output allows you to classify it at a granular level in terms of risk, personal clause or conditions. 
-## Ocr Output Support
+- **Text Analytics** you may leverage any Text Analytics such as Key Phrases, Entities Extraction with more confidence of its outcome
+- **Accessibility** : Any infographic becomes alive, overcoming the alt text feature.
+- **Read Aloud feature** : it becomes easier to build solutions to read aloud an image, increasing verbal narrative of visual information. 
+- **Machine Translation** : get more accurate MT output as you can retain more context. 
+- **Sentences/Paragraph Classification**: from scanned-base images i.e. contracts, having a more meaninful textual output allows you to classify it at a granular level in terms of risk, personal clause or conditions. 
+## OCR Engines Output Support
 Today bboxhelper supports the output of 
 ### AZURE
 * Azure Batch Read API response. 
@@ -36,13 +38,19 @@ More information to get started can be found documentation of this repository: [
 ## Known Limitations 
 More information on known [limitations](https://puthurr.github.io/known-limitations/).
 
+## Recipes 
+If you need more hands-on examples on how to use this library check out our [recipes](https://github.com/puthurr/ocrlayout-recipes)
+
 ## Upcoming improvements
 * hOCR Suppport https://en.wikipedia.org/wiki/HOCR [tools](https://github.com/tmbdev/hocr-tools)
-* asyncio support for pages processing 
 * Google OCR for documents (PDF)
 * AWS OCR for documents (PDF)
 
-# Release History
+# Releases History
+## 0.9 (Upcoming)
+- Code-base to Python 3.8
+- Support for concurrent pages processing. 
+- Faster Contours Sorting.
 ## 0.8 (2020-08-24)
 - Support for AWS Detect Document Text 
 - Google support refactored for consistency 
