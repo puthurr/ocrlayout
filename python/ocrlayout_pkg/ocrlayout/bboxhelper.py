@@ -10,6 +10,8 @@ from os import path
 from typing import List
 import random
 import numpy as np
+import time
+from timeit import default_timer as timer
 
 from .bboxutils import BBOXAnnotate, BBoxSort, BBoxUtils
 
@@ -507,7 +509,7 @@ class BBoxHelper():
         if annotationconfig:
             bboxannotate=BBOXAnnotate.from_json(json.loads(annotationconfig))
 
-    def processAzureOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
+    def processAzureOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,concurrency:bool = True, max_workers:int = 4,verbose=None):
         """ processAzureOCRResponse method
             Process an OCR Response input from Azure and returns a new BBox format OCR response.
         """
@@ -525,9 +527,9 @@ class BBoxHelper():
             return None
 
         if response:
-            return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+            return self.__processOCRResponse(response,sortingAlgo,boxSeparator,concurrency,max_workers)
 
-    def processGoogleOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
+    def processGoogleOCRResponse(self,input,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,concurrency:bool = True, max_workers:int = 4,verbose=None):
         """ processGoogleOCRResponse method
             Process an OCR Response input from Google and returns a new BBox format OCR response.
         """
@@ -545,9 +547,9 @@ class BBoxHelper():
             return None
 
         if response:
-            return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+            return self.__processOCRResponse(response,sortingAlgo,boxSeparator,concurrency, max_workers)
 
-    def processAWSOCRResponse(self,input,width,height,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,verbose=None):
+    def processAWSOCRResponse(self,input,width,height,sortingAlgo=BBoxSort.contoursSort,boxSeparator:str = None,concurrency:bool = True, max_workers:int = 4,verbose=None):
         """ processAWSOCRResponse method
             Process an OCR Response input from AWS and returns a new BBox format OCR response.
         """
@@ -565,7 +567,7 @@ class BBoxHelper():
             return None
 
         if response:
-            return self.__processOCRResponse(response,sortingAlgo,boxSeparator)
+            return self.__processOCRResponse(response,sortingAlgo,boxSeparator,concurrency,max_workers)
 
     def __applyRotation(self,page,initialRotation=0):
         """__applyRotation method
@@ -623,6 +625,9 @@ class BBoxHelper():
         return (page, page_width, page_height, applied_rotation)
 
     def __processPage(self,page, sortingAlgo=BBoxSort.contoursSort, boxSeparator:str = None):
+        """processPage
+        Process a single page of an OCR Response (Azure,Google,AWS). Returns the modified page object. 
+        """
         bboxlogger.debug("{0}|Processing Page {0} with {1} lines.".format(str(page.id),len(page.lines)))
         # Rotate the Bounding boxes when an angle is detected
         page,page_width,page_height,applied_rotation = self.__applyRotation(page)
@@ -646,9 +651,11 @@ class BBoxHelper():
             page.width = page_width
             page.height = page_height
 
+        bboxlogger.debug("{0}|Completed Page {0} with {1} lines.".format(str(page.id),len(page.lines)))
+
         return page 
 
-    def __processOCRResponse(self, response, sortingAlgo=BBoxSort.contoursSort, boxSeparator:str = None):
+    def __processOCRResponse(self, response, sortingAlgo=BBoxSort.contoursSort, boxSeparator:str = None, concurrency:bool = True, max_workers:int = 4):
         """processOCRResponse method
         Process an OCR Response input (Azure,Google,AWS) and returns a new BBox format OCR response.
 
@@ -657,10 +664,28 @@ class BBoxHelper():
         """
         newtext = ""
 
-        # Process each page concurrently - up to 10
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        # Timer start for measuring OCR response processing time
+        start = timer()
+        bboxlogger.debug("Performance - Processing OCR Response started time {0}".format(time.strftime('%X')))
+
+        if concurrency:
+            # Process each page concurrently 
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_pages = {executor.submit(self.__processPage, page, sortingAlgo, boxSeparator):page.id for page in response.pages}
+                concurrent.futures.wait(future_pages,return_when=concurrent.futures.ALL_COMPLETED)
+                # for future in concurrent.futures.as_completed(future_pages):
+                #         page_id = future_pages[future]
+                #         bboxlogger.debug('Thread - page %r completed ' % (page_id))
+                #         try:
+                #             data = future.result()
+                #         except Exception as exc:
+                #             bboxlogger.debug('Thread - Page %r generated an exception: %s' % (page_id, exc))
+                #         else:
+                #             bboxlogger.debug('Thread - Page %r page is %d lines' % (page_id, len(data.lines)))
+        else:
+            # Process each page sequentially
             for page in response.pages:
-                future_pages = {executor.submit(self.__processPage, page, sortingAlgo, boxSeparator):page.id}
+                page = self.__processPage(page, sortingAlgo, boxSeparator)
 
         # Build the final text output for the document with annotations if configured
         for page in response.pages:
@@ -678,6 +703,12 @@ class BBoxHelper():
                 newtext += os.linesep
 
         response.text = str(newtext)
+
+        # Capture the End OCR processing time
+        end = timer()
+        bboxlogger.debug("Performance - Processing OCR Response completed time {0}".format(time.strftime('%X')))
+        bboxlogger.debug(f"Performance - Execution time in seconds: {end - start}") # Time in seconds, e.g. 5.38091952400282
+
         return response
 
     def __processLineBoundingBoxes(self, lines, alignment, unit, ppi): 
