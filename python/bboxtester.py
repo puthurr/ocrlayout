@@ -105,7 +105,7 @@ if __name__ == "__main__":
             exit
         else:
             for engine in ocrengines:
-                engine.detext_text(filename=args.image,callOCR=args.callocr,verbose=args.verbose)
+                engine.detect_text(filename=args.image,callOCR=args.callocr,verbose=args.verbose)
     else:
         if args.imagesdir:
             if not os.path.exists(args.imagesdir):
