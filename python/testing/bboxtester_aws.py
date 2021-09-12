@@ -23,7 +23,8 @@ try:
     print("PyPI Package imported")
 except ImportError:
     print("Local Package imported")
-    from ocrlayout_pkg.ocrlayout.bboxhelper import BBOXOCRResponse,BBoxHelper,BBOXPoint
+    from ocrlayout_pkg.ocrlayout.bboxmodel import BBOXOCRResponse,BBOXPoint
+    from ocrlayout_pkg.ocrlayout.bboxhelper import BBoxHelper
 
 # Import
 from .bboxtester_utils import OCREngine, OCRUtils
