@@ -590,11 +590,11 @@ class BBoxHelper():
         #         bboxlogger.debug("After rotation 2 {}".format(test))
 
         # if (rotation >= 360-1 or rotation == 0):
-        if rotation in range(360-rotation_threshold,360+rotation_threshold) or rotation in range(-rotation_threshold,rotation_threshold):
+        if 360 - rotation_threshold <= rotation <= 360 + rotation_threshold or -rotation_threshold <= rotation <= rotation_threshold:
             bboxlogger.debug("no rotation adjustment required")
         # elif (rotation >= 270-1) or rotation in range(-180,-90):
-        elif rotation in range(270-rotation_threshold,270+rotation_threshold) or rotation in range(-90-rotation_threshold,-90+rotation_threshold):
-            applied_rotation=90
+        elif 270 - rotation_threshold <= rotation <= 270 + rotation_threshold or -90 - rotation_threshold <= rotation <= -90 + rotation_threshold:
+            applied_rotation = 90
             # //Rotate 90 clockwise
             for line in page.lines:
                 line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, applied_rotation)
@@ -603,14 +603,14 @@ class BBoxHelper():
             page.width = page_height
             page.height = page_width
         # elif (rotation >= 180-1):
-        elif rotation in range (180-rotation_threshold,180+rotation_threshold) or rotation in range(-180-rotation_threshold,-180+rotation_threshold):
-            applied_rotation=180
+        elif 180 - rotation_threshold <= rotation <= 180 + rotation_threshold or -180 - rotation_threshold <= rotation <= -180 + rotation_threshold:
+            applied_rotation = 180
             # // Rotate 180
             for line in page.lines:
                 line.boundingbox = BBoxUtils.rotateBoundingBox(page.width, page.height, line.boundingbox, applied_rotation)
                 line.calculateMedians()
         # elif (rotation >= 90-1):
-        elif rotation in range(90-rotation_threshold,90+rotation_threshold) or rotation in range(-270-rotation_threshold,-270+rotation_threshold):
+        elif 90 - rotation_threshold <= rotation <= 90 + rotation_threshold or -270 - rotation_threshold <= rotation <= -270 + rotation_threshold:
             applied_rotation=-90
             # //Rotate 90 counterclockwise
             for line in page.lines:
