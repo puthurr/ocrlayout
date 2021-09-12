@@ -1,10 +1,10 @@
 wheel
 futures;python_version<="2.7"
 python-dateutil
-requests>=2.9.2
+requests>=2.26.0
 vcrpy<2.0.0 #2.0 breaks python 3.4
 azure-common
-cryptography>=2.3
+cryptography>=3.4.7
 adal
 html5lib
 lxml
@@ -15,7 +15,7 @@ pandas
 google-cloud-vision==1.0.0
 mkdocs
 mkdocs-material
-Pillow
+Pillow>=8.1.1
 opencv-contrib-python
 boto3
 numpy
