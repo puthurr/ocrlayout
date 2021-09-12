@@ -6,7 +6,7 @@
       "ImageTextBoxingXThreshold": 6.0,
       "ImageTextBoxingYThreshold": 10.0,
       "ImageTextBoxingBulletListAdjustment": 20.0,
-      "GoogleLineBreakThresholdInPixel":10,
+      "GoogleLineBreakThresholdInPixel":12,
       "Thresholds": {
         "LeftAlignment": {
           "Xthresholdratio": 1.5,
@@ -24,7 +24,7 @@
     },
     "inch": {
       "ImageTextBoxingXThreshold": 0.0625,
-      "ImageTextBoxingYThreshold": 0.1041666667,
+      "ImageTextBoxingYThreshold": 0.125,
       "ImageTextBoxingBulletListAdjustment": 0.2083333333,
       "GoogleLineBreakThresholdInPixel":0.1041666667,
       "Thresholds": {
