@@ -47,10 +47,10 @@ If you need more hands-on examples on how to use this library check out our [rec
 * AWS OCR for documents (PDF)
 
 # Releases History
-## 0.9 (Upcoming)
+## 1.0 (TBD)
 - Code-base to Python 3.8
 - Support for concurrent pages processing. 
-- Faster Contours Sorting.
+- Faster abd better Contours Sorting.
 ## 0.8 (2020-08-24)
 - Support for AWS Detect Document Text 
 - Google support refactored for consistency 

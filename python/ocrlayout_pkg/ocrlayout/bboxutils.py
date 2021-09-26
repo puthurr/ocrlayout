@@ -1,15 +1,11 @@
 # Import required modules.
-import logging.config
 import math
-
-from datetime import datetime
-from os import path
-from typing import List
-
+import copy
+from types import new_class
 import numpy as np
+from numpy.core.fromnumeric import sort
 
 from . import bboxlog
-
 bboxlogger = bboxlog.get_logger()
 
 #
@@ -113,9 +109,8 @@ class BBoxUtils():
         return prevline.boundingbox[index]
 
     @classmethod
-    def makeRectangle(cls,line): 
+    def enforceRectangle(cls,line): 
         # X 
-        # 
         line.boundingbox[0].X=line.boundingbox[3].X = min(line.boundingbox[0].X,line.boundingbox[3].X)
         line.boundingbox[1].X=line.boundingbox[2].X = max(line.boundingbox[1].X,line.boundingbox[2].X)
         # Y
@@ -124,49 +119,58 @@ class BBoxUtils():
 
     @classmethod
     def draw_boxes_on_page(cls,canvas,blocks,scale=1):
-        """Draw the blocks of text in a vanilla canvas."""       
-        origy, origx = canvas.shape
-        miny, minx = canvas.shape
-        maxy = 0
-        maxx = 0
-        # Axis 0 - sum of each column
-        sumAxis0=np.zeros((1,origx),np.uint32)
-        # Axis 1 - sum of each row
-        sumAxis1=np.zeros((1,origy),np.uint32)
+        """Draw the blocks of text on a vanilla canvas."""       
         for block in blocks:
             (minh,maxh)=block.getHeightRange(scale)
             (minw,maxw)=block.getWidthRange(scale)
             canvas[minh:maxh,minw:maxw]=block.id
-            # Find the coordinates to crop the canvas to improve performance and memory usage
-            minx=min(minx,minw)
-            miny=min(miny,minh)
-            maxx=max(maxx,maxw)
-            maxy=max(maxy,maxh)
-            sumAxis0[0][minw:maxw]=1
-            sumAxis1[0][minh:maxh]=1
 
-        # Make sure we stay in the canvas
-        miny=max(miny-1,0)
-        minx=max(minx-1,0)
-        maxy=min(maxy+1,origy)
-        maxx=min(maxx+1,origx)
-        # Crop the current canvas
-        # canvas = canvas[miny:maxy,minx:maxx]
-        return canvas, 0, 0, [sumAxis0,sumAxis1]
-
-    # @classmethod
-    # def determine_ppi(cls,width,height):
-    #     ppi=72
-    #     while True:
-    #         ppi+=1
-    #         pwidth=width*ppi
-    #         pheight=height*ppi
-    #         if (pwidth.is_integer() and pheight.is_integer()):
-    #             return ppi
+        return canvas
 
 #
 # Bounding Boxes Sorting class
 #
+class BBoxContourCluster():
+    def __init__(self, parent_cluster, rid, axis, startindex, endindex, value = 0, level = 0, gaplength = 0):
+        self.rid=rid
+        self.level=level
+        self.startindex=startindex
+        self.endindex=endindex
+        # Axis specific
+        self.axis=axis
+        self.axis_sum=value
+        self.axis_size=max(0,endindex-startindex)+1
+        self.gap=gaplength
+        self.blockid=-1
+        # Sorting field
+        self.sorting=[]
+        self.xtranslate=0
+        self.ytranslate=0
+
+        if parent_cluster:
+            self.sorting=copy.deepcopy(parent_cluster.sorting)
+            self.xtranslate+=parent_cluster.xtranslate
+            self.ytranslate+=parent_cluster.ytranslate
+
+        self.sorting.append(str(self.level)+str(self.rid))
+
+    def isRootCluster(self):
+        return (self.level==0) and (self.rid==0)
+
+    def getClusterAbsoluteCoordinates(self):
+        x=self.xtranslate
+        y=self.ytranslate
+        if self.axis==0:
+            x+=self.startindex
+        else:
+            y+=self.startindex
+        return (x,y)
+
+    def getSorting(self):
+        return [int(o) for o in self.sorting]
+        # return map(int,self.sorting)
+
+
 class BBoxSort():
 
     # Define the multiple Sorting strategy 
@@ -202,165 +206,343 @@ class BBoxSort():
     def contoursSort(cls,pageId,width,height,blocks,scale=1):
         """Main sorting method to approach the natural reading."""
         bboxlogger.debug("{0}|contoursSort width:{1} height:{2} scale:{3}".format(str(pageId),str(width),str(height),str(scale)))
-        # Make empty canvas
+
+        # STEP 1 - Make empty canvas
         canvas=np.zeros((int(height*scale),int(width*scale)),np.uint32)
-        # Draw all the boxes on the canvas
-        canvas,yshift,xshift,sumAxis=BBoxUtils.draw_boxes_on_page(canvas,blocks,scale)
-        bboxlogger.debug("{0}|contoursSort - boxes applied on canvas".format(str(pageId)))
-        # Cluster the blocks 
-        lineContours=cls.__clusterBlocks(canvas,blocks,width,height,scale,yshift,xshift,sumAxis)
+
+        # STEP 2 - Draw all the boxes on the canvas
+        canvas=BBoxUtils.draw_boxes_on_page(canvas,blocks,scale)
+        bboxlogger.debug("{0}|contoursSort - bounding boxes applied on canvas".format(str(pageId)))
+
+        # STEP 3 - Cluster the blocks
+        yshift=0
+        xshift=0
+        sumAxis= cls.__summarizeCanvas(canvas)
+        # lineContours=cls.__clusterBlocks(canvas,blocks,width,height,scale,yshift,xshift,sumAxis)
+        lineContours=cls.__assignBlocksToClusters(canvas,blocks,width,height,scale,yshift,xshift,sumAxis)
         bboxlogger.debug("{0}|contoursSort - boxes clustered".format(str(pageId)))
-        # Sort list on block sorting
+
+        # STEP 4 - Sort list on block sorting attribute n-tuple
         contours_sorted = sorted(lineContours,key= lambda o: o.sorting)
         bboxlogger.debug("{0}|contoursSort - sorted on block rank".format(str(pageId)))
 
         return contours_sorted
 
     @classmethod
-    def findClusters(cls,sumAxis,gapthreshhold=1):
+    def findClusters(cls,parent_cluster,axis,sumAxis,level=0, gapthreshhold=1):
+        bboxlogger.debug("Finding cluster(s) on axis {0} ".format(str(axis)))
         # Loop the summed values
-        startindex = 0
+        startindex = -1
+        sumValue = -1
         clusters = []
+        clusters_count=0
         compVal = True
         gaplength = 0
         for i, val in enumerate(sumAxis):
             # logical test to detect change between 0 and > 0
             testVal = (val > 0)
             if testVal == compVal:
-                if startindex==0:
+                if startindex==-1:
                     startindex=i
-                # when the value changed to a 0, the previous rows
+                    sumValue=val
+                endIndex=max(startindex,i-1)
+                # When the value changed to a 0, the previous rows
                 # contained contours, so add start/end index to list
                 if val == 0:
                     if gaplength > gapthreshhold:
-                        clusters.append((startindex,i-1,gaplength))
+                        clusters_count+=1
+                        new_cluster=BBoxContourCluster(parent_cluster,clusters_count,axis,startindex,endIndex,sumValue,level,gaplength)
+                        clusters.append(new_cluster)
                     else:
+                        # Previous Cluster ending
                         if len(clusters)>0:
-                            (start,end,gap)=clusters[-1]
-                            clusters[-1]=(start,i-1,gap)
+                            prevCluster=clusters[-1]
+                            clusters[-1]=BBoxContourCluster(parent_cluster,clusters_count,axis,prevCluster.startindex,endIndex,prevCluster.axis_sum,level,prevCluster.gap)
                         else:
-                            clusters.append((startindex,i-1,gaplength))
-                    # startindex = i+1
-                    startindex = 0
+                        # Starting a new cluster
+                            clusters_count+=1
+                            new_cluster=BBoxContourCluster(parent_cluster,clusters_count,axis,startindex,endIndex,sumValue,level,gaplength)
+                            clusters.append(new_cluster)
+                            # clusters.append(BBoxContourCluster(clusters_count,axis,startindex,endIndex,parent,level,gaplength))
+                    startindex = -1
                     gaplength=1
                 compVal = not compVal
             else:
                 if val==0:
                     gaplength+=1
+                sumValue = val
 
             if i == (len(sumAxis)-1):
-                if startindex>0:
-                    clusters.append((startindex,i,gaplength))
-                # if len(clusters)>0:
-                #     (start,end,gap)=clusters[-1]
-                #     clusters[-1]=(start,i,gap)
-                # else:
-                #     clusters.append((startindex,i,gaplength))
+                if startindex>-1:
+                    clusters_count+=1
+                    new_cluster=BBoxContourCluster(parent_cluster,clusters_count,axis,startindex,i,val,level,gaplength)
+                    clusters.append(new_cluster)
 
         return clusters
 
     # Not efficient when dealing with inch scale
     @classmethod
-    def sumAxis(cls,canvas,axis=0):
+    def __summarizeOneAxis(cls,canvas,axis=0):
         # Axis Sum Handling
-        bboxlogger.debug("Finding (sub-)cluster(s) on axis {0} with canvas shape {1}".format(str(axis),str(canvas.shape)))
-        # Sum all entries on a particular axis
-        # sumAxis = np.trim_zeros(np.sum(canvas,axis=axis,dtype=np.uint64),'b')
+        bboxlogger.debug("Sum axis {0} with canvas shape {1}".format(str(axis),str(canvas.shape)))
         sumAxis = np.sum(canvas,axis=axis,dtype=np.uint32)
-        bboxlogger.debug("Sum on axis {0} done. Sum shape {1}".format(str(axis),sumAxis.shape))
+        bboxlogger.debug("Sum axis {0} done. Sum shape {1}".format(str(axis),sumAxis.shape))
         return sumAxis
 
     @classmethod
-    def __clusterBlocks(cls,canvas,blocks,width,height,scale=1,yshift=0,xshift=0,axis_sum=None,axis=0):
+    def __summarizeCanvas(cls,canvas):
+        sumAxis0 = np.sum(canvas,axis=0,dtype=np.uint32)
+        sumAxis1 = np.sum(canvas,axis=1,dtype=np.uint32)
+        bboxlogger.debug("Sum All - Axis {0} shape {1}. Axis {2} shape {3}".format(str(0),sumAxis0.shape,str(1),sumAxis1.shape))
+
+        # result = [tuple(map(sum, zip(*ele))) for ele in zip(*canvas)]
+
+        return [sumAxis0,sumAxis1]
+
+    @classmethod
+    def __recurseClusters(cls,level,clusters,canvas,yshift=0,xshift=0):
+        inner_clusters=[]
+        for i,cluster in enumerate(clusters):
+            bboxlogger.debug("---")
+            bboxlogger.debug("Level {0} Cluster {1} StartIndex {2} EndIndex {3} Axis-Size {4} Axis {6} Gap {5}".format(level,i,cluster.startindex,cluster.endindex,cluster.axis_size,cluster.gap,cluster.axis))
+
+            # Determine the cluster canvas
+            # Axis = 1 identifies rows in a page
+            if cluster.axis==1:
+                cluster_canvas = canvas[cluster.startindex+xshift:cluster.endindex+1+xshift,:]
+                if not cluster.isRootCluster():
+                    cluster.ytranslate+=cluster.startindex
+            else:
+            # Axis = 0 identifies columns in a page
+                cluster_canvas = canvas[:,cluster.startindex+yshift:cluster.endindex+1+yshift]
+                if not cluster.isRootCluster():
+                    cluster.xtranslate+=cluster.startindex
+
+            bboxlogger.debug("Cluster canvas shape {0}".format(cluster_canvas.shape))
+            # Summarize the cluster canvas
+            subsumaxis=cls.__summarizeCanvas(cluster_canvas)
+
+            # Find sub-cluster(s) on the same axis
+            sameAxisSubClusters=cls.findClusters(cluster,cluster.axis,subsumaxis[cluster.axis],level)
+            if (len(sameAxisSubClusters) > 1):
+                bboxlogger.debug("Level {0} Cluster {1} - Found {2} clusters on the same axis {3}".format(level,i,str(len(sameAxisSubClusters)),str(cluster.axis)))
+                inner_clusters.extend(cls.__recurseClusters(level+1,sameAxisSubClusters,cluster_canvas,yshift,xshift))
+            else:
+                # Reverse the cluster axis to find sub clusters...
+                revertaxis=np.absolute(cluster.axis-1)
+                oppositeAxisSubClusters=cls.findClusters(cluster,revertaxis,subsumaxis[revertaxis],level)
+                if (len(oppositeAxisSubClusters) > 1):
+                    bboxlogger.debug("Level {0} Cluster {1} - Found {2} clusters on the opposite axis {3}".format(level,i,str(len(oppositeAxisSubClusters)),str(revertaxis)))
+                    inner_clusters.extend(cls.__recurseClusters(level+1,oppositeAxisSubClusters,cluster_canvas,yshift,xshift))
+                else:
+                    if (len(oppositeAxisSubClusters) > 0):
+                        # the single opposite cluster will be used to determine the block id
+                        bboxlogger.debug("Level {0} Cluster {1} - Found opposite cluster ".format(level,i,str(len(oppositeAxisSubClusters))))
+                        opposite_cluster=oppositeAxisSubClusters[0]
+                        cluster.blockid=int(opposite_cluster.axis_sum/cluster.axis_size)
+                        bboxlogger.debug("Level {0} Cluster {1} - Assigned Block Id {2}".format(level,i,cluster.blockid))
+                    else:
+                        bboxlogger.debug("Level {0} Cluster {1} - ERROR No opposite cluster found.".format(level,i))
+
+            # When we exhaust all clusterization we add the cluster to the list. 
+            if (len(sameAxisSubClusters) <= 1 and len(oppositeAxisSubClusters) <=1):
+                bboxlogger.debug("Level {0} Cluster {1} Adding cluster with axis sum set to {2}".format(level,i,cluster.axis_sum))
+                inner_clusters.append(cluster)
+
+        return inner_clusters
+
+    @classmethod
+    def __assignBlocksToClusters(cls,canvas,blocks,width,height,scale=1,yshift=0,xshift=0,axis_sum=None,axis=0):
+
+        # # Default Axis 0 first (horizontal for height clusters)
+        # clusters=cls.findClusters(axis,axis_sum[axis])
+
+        # # if there is only single cluster then we shall revert to the opposite axis strategy
+        # if len(clusters)<=1:
+        #     bboxlogger.debug("No cluster(s) found on axis {0}. Switching to opposite axis.".format(str(axis)))
+        #     axis=np.absolute(axis-1)
+        #     clusters=cls.findClusters(axis,axis_sum[axis])
+
+        # bboxlogger.debug("Found {0} clusters on axis {1}".format(str(len(clusters)),str(axis)))
+
         # Default Axis 0 first (horizontal for height clusters)
-        clusters=cls.findClusters(axis_sum[axis][0])
-
-        # if there is only single cluster then we shall revert to the opposite axis strategy
-        if len(clusters)<=1:
-            bboxlogger.debug("No cluster(s) found on axis {0}. Switching to opposite axis.".format(str(axis)))
-            axis=np.absolute(axis-1)
-            # axis_sum[axis]=cls.sumAxis(canvas,axis)
-            clusters=cls.findClusters(axis_sum[axis][0])
-
-        bboxlogger.debug("Found {0} clusters on axis {1}".format(str(len(clusters)),str(axis)))
-
+        root_cluster=BBoxContourCluster(None,0,0,0,width)
+        # Start the clusters iteration
+        clusters = cls.__recurseClusters(0,[root_cluster],canvas,yshift,xshift)
+        
         # Width*Height
         wh=width*height
 
         lineContours = []
+
+        #
+        # ASSIGN BLOCKS TO CORRESPONDING CLUSTER
+        #
+        bboxlogger.debug("---")
+        bboxlogger.debug("Enumerate {0} cluster(s) to assign them to blocks".format(str(len(clusters))))
+
         # loop contours, find the boundingrect,
         # compare to line-values
         # store line number,  x value and contour index in list
         for i,cluster in enumerate(clusters):
             lines_counter=0
-            (startindex,endindex,gap) = cluster
-            bboxlogger.debug("Cluster {0} StartIndex {1} EndIndex {2} Size {3} Gap {4}".format(i,startindex,endindex,(endindex-startindex),gap))
-            # Identify if we could find subclusters i.e. handling multi columns layout
-            if axis==1:
-                # subclusters=cls.findClusters(canvas[startindex:endindex,:],axis=0)
-                # subsumaxis=cls.sumAxis(canvas[startindex+yshift:endindex+yshift,:],axis=0)
-                temp = canvas[startindex+xshift:endindex+xshift,:]
-                bboxlogger.debug(temp.shape)
-                subsumaxis=cls.sumAxis(temp,axis=0)
-                subclusters=cls.findClusters(subsumaxis)
-            else:
-                # subclusters=cls.findClusters(canvas[:,startindex:endindex],axis=1)
-                temp = canvas[:,startindex+xshift:endindex+xshift]
-                bboxlogger.debug(temp.shape)
-                subsumaxis=cls.sumAxis(temp,axis=1)
-                subclusters=cls.findClusters(subsumaxis)
+            bboxlogger.debug("Cluster {0} StartIndex {1} EndIndex {2} Size {3} Gap {4}".format(i,cluster.startindex,cluster.endindex,cluster.axis_size,cluster.gap))
 
-            bboxlogger.debug("Cluster {0} - Found {1} sub-cluster(s) on axis {2}".format(i,len(subclusters),np.absolute(axis-1)))
-        
             # Loop through non assigned blocks.
             for j,block in enumerate([o for o in blocks if o.cluster<0]):
-                (x,y,w,h) = block.getBoxesAsRectangle(scale)
-                if axis==1:
-                    # Y-axis clusters aka rows
-                    if y >= (startindex+yshift) and y <= (endindex+yshift):
-                        lines_counter+=1
-                        block.cluster=i
-                        block.subcluster=0
-                        if len(subclusters)>1:
-                            # Do something special
-                            for ic,subc in enumerate(subclusters):
-                                bboxlogger.debug("Cluster {0} - Sub-Cluster {1} on X-Axis processing...".format(i,ic))
-                                (subcstart,subcend,subcgap)=subc
-                                if x >= (subcstart+yshift) and x <= (subcend+yshift):
-                                    block.subcluster=ic
-                                    break
-                            block.sorting=(block.cluster,block.subcluster,block.ymedian)
-                        else:
-                            block.rank+=(block.xmedian/(np.shape(canvas)[1]/scale))
-                            block.rank+=(block.ymedian/(np.shape(canvas)[0]/scale))*0.01
-                            block.sorting=(block.cluster,block.subcluster,block.rank)
-                            pass
+                # (x,y,w,h) = block.getBoxesAsRectangle(scale)
+                # (cx,cy) = cluster.getClusterAbsoluteCoordinates()
+                # if ( cluster.xtranslate == x and cluster.ytranslate== y):
+                #     lines_counter+=1
+                #     block.cluster=1
+                #     block.sorting=cluster.getSorting()
+                #     block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
+                #     lineContours.append(block)
+                #     break
 
-                        lineContours.append(block)
-                else:
-                    # X-axis clusters aka columns
-                    if x >= (startindex+xshift) and x <= (endindex+xshift):
-                        lines_counter+=1
-                        block.cluster=i
-                        block.subcluster=0
-                        if len(subclusters)>1:
-                            # Do something special
-                            for ic,subc in enumerate(subclusters):
-                                bboxlogger.debug("Cluster {0} - Sub-Cluster {1} on X-Axis processing...".format(i,ic))
-                                (subcstart,subcend,subcgap)=subc
-                                if y >= (subcstart+xshift) and y <= (subcend+xshift):
-                                    block.subcluster=ic
-                                    break
-                            block.sorting=(block.cluster,block.subcluster,block.xmedian)
-                        else:
-                            block.rank+=(block.ymedian/(np.shape(canvas)[0]/scale))
-                            block.rank+=(block.xmedian/(np.shape(canvas)[1]/scale))*0.01
+                if block.id == cluster.blockid:
+                    bboxlogger.debug("Cluster - Block match on id {0}".format(cluster.blockid))
+                    lines_counter+=1
+                    block.cluster=1
+                    block.sorting=cluster.getSorting()
+                    # block.sorting=(block.cluster,block.ymedian-(width-block.xmedian)*0.1)
+                    # block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
 
-                            block.sorting=(block.cluster,block.subcluster,block.rank)
-                            pass
+                    lineContours.append(block)
+                    break
 
-                        lineContours.append(block)
+                # if cluster.axis==1:
+                #     # Y-axis clusters aka columns
+                #     if y >= (cluster.startindex+yshift) and y <= (cluster.endindex+yshift):
+                #         lines_counter+=1
+
+                #         block.cluster=1
+                #         block.sorting=cluster.getSorting()
+                #         # block.sorting=(block.cluster,block.ymedian-(width-block.xmedian)*0.1)
+                #         block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
+
+                #         lineContours.append(block)
+                # else:
+                #     # X-axis clusters aka rows
+                #     if x >= (cluster.startindex+xshift) and x <= (cluster.endindex+xshift):
+                #         lines_counter+=1
+
+                #         block.cluster=1
+                #         block.sorting=cluster.getSorting()
+                #         # block.cluster=cluster.level
+                #         # block.subcluster=cluster.rid
+                #         # block.sorting=(block.cluster,block.xmedian-(height-block.ymedian)*0.1)
+                #         block.sorting.append(block.xmedian-(height-block.ymedian)*0.1)
+
+                #         lineContours.append(block)
 
             bboxlogger.debug("Cluster {0} assigned to {1} lines".format(i,lines_counter))
 
         return lineContours
+
+    # @classmethod
+    # def __clusterBlocks(cls,canvas,blocks,width,height,scale=1,yshift=0,xshift=0,axis_sum=None,axis=0):
+    #     # Default Axis 0 first (horizontal for height clusters)
+    #     clusters=cls.findClusters(axis,axis_sum[axis])
+
+    #     # if there is only single cluster then we shall revert to the opposite axis strategy
+    #     if len(clusters)<=1:
+    #         bboxlogger.debug("No cluster(s) found on axis {0}. Switching to opposite axis.".format(str(axis)))
+    #         axis=np.absolute(axis-1)
+    #         clusters=cls.findClusters(axis,axis_sum[axis])
+
+    #     bboxlogger.debug("Found {0} clusters on axis {1}".format(str(len(clusters)),str(axis)))
+
+    #     clusters = cls.__recurseClusters(0, clusters,canvas,yshift,xshift)
+        
+    #     # Width*Height
+    #     wh=width*height
+
+    #     lineContours = []
+    #     # loop contours, find the boundingrect,
+    #     # compare to line-values
+    #     # store line number,  x value and contour index in list
+    #     for i,cluster in enumerate(clusters):
+    #         lines_counter=0
+    #         bboxlogger.debug("Cluster {0} StartIndex {1} EndIndex {2} Size {3} Axis {5} Gap {4}".format(i,cluster.startindex,cluster.endindex,(cluster.endindex-cluster.startindex),cluster.gap,cluster.axis))
+    #         revertaxis=np.absolute(cluster.axis-1)
+    #         # Identify if we could find subclusters i.e. handling multi columns layout
+    #         if cluster.axis==1:
+    #             # subclusters=cls.findClusters(canvas[startindex:endindex,:],axis=0)
+    #             # subsumaxis=cls.sumAxis(canvas[startindex+yshift:endindex+yshift,:],axis=0)
+    #             temp = canvas[cluster.startindex+xshift:cluster.endindex+xshift,:]
+    #             # bboxlogger.debug(temp.shape)
+    #             # subsumaxis=cls.sumAxis(temp,axis=0)
+    #             # subclusters=cls.findClusters(0,subsumaxis)
+    #         else:
+    #             # subclusters=cls.findClusters(canvas[:,startindex:endindex],axis=1)
+    #             temp = canvas[:,cluster.startindex+yshift:cluster.endindex+yshift]
+    #             # bboxlogger.debug(temp.shape)
+    #             # subsumaxis=cls.sumAxis(temp,axis=1)
+    #             # subclusters=cls.findClusters(1,subsumaxis)
+    #         bboxlogger.debug(temp.shape)
+    #         subsumaxis=cls.sumAxis(temp,axis=revertaxis)
+    #         subclusters=cls.findClusters(revertaxis,subsumaxis)
+
+    #         bboxlogger.debug("Cluster {0} - Found {1} sub-cluster(s) on axis {2}".format(i,len(subclusters),np.absolute(axis-1)))
+        
+    #         #
+    #         # ASSIGN BLOCKS TO CORRESPONDING CLUSTER
+    #         #
+    #         # Loop through non assigned blocks.
+    #         for j,block in enumerate([o for o in blocks if o.cluster<0]):
+    #             (x,y,w,h) = block.getBoxesAsRectangle(scale)
+    #             if axis==1:
+    #                 # Y-axis clusters aka columns
+    #                 if y >= (cluster.startindex+yshift) and y <= (cluster.endindex+yshift):
+    #                     lines_counter+=1
+    #                     block.cluster=i
+    #                     block.subcluster=0
+    #                     if len(subclusters)>1:
+    #                         # Do something special
+    #                         for ic,subc in enumerate(subclusters):
+    #                             bboxlogger.debug("Cluster {0} - Sub-Cluster {1} on Y-Axis processing...".format(i,ic))
+    #                             if x >= (subc.startindex+yshift) and x <= (subc.endindex+yshift):
+    #                                 block.subcluster=ic
+    #                                 break
+    #                         # block.sorting=(block.cluster,block.subcluster,block.ymedian)
+    #                         # block.sorting=(block.cluster,block.subcluster,block.xmedian*block.ymedian)
+    #                         # block.sorting=(block.cluster,block.subcluster,block.xtimesy)
+    #                         # block.sorting=(block.cluster,block.subcluster,block.ymedian)
+    #                         block.sorting=(block.cluster,block.subcluster,block.ymedian-(width-block.xmedian)*0.1)
+    #                     else:
+    #                         block.rank+=(block.xmedian/(np.shape(canvas)[1]/scale))
+    #                         block.rank+=(block.ymedian/(np.shape(canvas)[0]/scale))*0.01
+    #                         block.sorting=(block.cluster,block.subcluster,block.rank)
+    #                         pass
+
+    #                     lineContours.append(block)
+    #             else:
+    #                 # X-axis clusters aka rows
+    #                 if x >= (cluster.startindex+xshift) and x <= (cluster.endindex+xshift):
+    #                     lines_counter+=1
+    #                     block.cluster=i
+    #                     block.subcluster=0
+    #                     if len(subclusters)>1:
+    #                         # Do something special
+    #                         for ic,subc in enumerate(subclusters):
+    #                             bboxlogger.debug("Cluster {0} - Sub-Cluster {1} on X-Axis processing...".format(i,ic))
+    #                             if y >= (subc.startindex+xshift) and y <= (subc.endindex+xshift):
+    #                                 block.subcluster=ic
+    #                                 break
+    #                         # block.sorting=(block.cluster,block.subcluster,block.xmedian)
+    #                         # block.sorting=(block.cluster,block.subcluster,block.xmedian*block.ymedian)
+    #                         # block.sorting=(block.cluster,block.subcluster,block.xtimesy)
+    #                         block.sorting=(block.cluster,block.subcluster,block.xmedian-(height-block.ymedian)*0.1)
+    #                     else:
+    #                         block.rank+=(block.ymedian/(np.shape(canvas)[0]/scale))
+    #                         block.rank+=(block.xmedian/(np.shape(canvas)[1]/scale))*0.01
+    #                         block.sorting=(block.cluster,block.subcluster,block.rank)
+    #                         pass
+
+    #                     lineContours.append(block)
+
+    #         bboxlogger.debug("Cluster {0} assigned to {1} lines".format(i,lines_counter))
+
+    #     return lineContours
+
