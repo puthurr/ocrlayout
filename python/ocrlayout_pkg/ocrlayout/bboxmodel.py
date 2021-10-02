@@ -1,15 +1,7 @@
 # Import required modules.
 import json
-import logging.config
-import os
-import uuid
-from datetime import datetime
-from os import path
 from typing import List
-import random
 import numpy as np
-import time
-from timeit import default_timer as timer
 
 # BBOX Utils
 from .bboxutils import BBoxSort, BBoxUtils
@@ -32,8 +24,8 @@ BLOCK_ID_COUNTER=0
 #
 class BBOXPoint():
     def __init__(self, X: float = 0.0, Y: float = 0.0, ppi=1):
-        self.X = X*ppi
-        self.Y = Y*ppi
+        self.X = round(X*ppi)
+        self.Y = round(Y*ppi)
     # Reverse a BBOX Point X,Y coordinates
     def inv(self):
         return BBOXPoint(self.Y,self.X)   
@@ -175,9 +167,9 @@ class BBOXNormalizedLine():
             for wordbox in data['words']:
                 words.append(BBOXPoint.from_azure_read_2(wordbox["boundingBox"],ppi))
         else:
-            points = list(map(BBOXPoint.from_azure, [ppi*x for x in array]))
+            points = list(map(BBOXPoint.from_azure, [round(ppi*x) for x in array]))
             for wordbox in data['words']:
-                words.append(list(map(BBOXPoint.from_azure, [ppi*x for x in wordbox["boundingBox"]])))
+                words.append(list(map(BBOXPoint.from_azure, [round(ppi*x) for x in wordbox["boundingBox"]])))
 
         if "text" in data:
             line_text=data["text"]
@@ -246,6 +238,17 @@ class BBOXPageLayout():
         self.text=Text
         self.lines=Lines
         self.ppi=ppi
+        if self.ppi > 1:
+            self.orig_width=self.width
+            self.orig_heigth=self.height
+            self.orig_unit=self.unit
+            # Scaled
+            self.unit="pixel"
+            self.width=round(self.orig_width*ppi)
+            self.height=round(self.orig_heigth*ppi)
+
+    def __isScaled(self):
+        return self.ppi > 1
 
     @classmethod
     def from_azure(cls, page):
@@ -254,13 +257,8 @@ class BBOXPageLayout():
         if "unit" in page:
             page_unit=page["unit"]
             if page_unit=="inch":
-                # Azure OCR response doesn't provide the ppi per page
-                # so we need to determine it for normalizing the processing of lines
-                # ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
-                
-                # decimal precision on Azure is set to 4, so we can set a 10000 to normalize the box and 
-                # not convert to pixel
-                ppi=10000
+                # Fix a 300 ppi for inch to pixel conversion. All coordinates will be rounded to the nearest integer.
+                ppi=300
             else:
                 ppi=1
         else:
@@ -281,14 +279,14 @@ class BBOXPageLayout():
             for region in page["regions"]:
                 for line in region["lines"]:
                     merged_lines.append(line)
-            lines=[BBOXNormalizedLine.from_azure(i,line, 1) for i,line in enumerate(merged_lines)]
+            lines=[BBOXNormalizedLine.from_azure(i,line, ppi) for i,line in enumerate(merged_lines)]
             # Azure OCR doesn't provide width/height data
             npx = np.array([x.getRootX() for x in lines])
             page_width = np.max(npx)-np.min(npx)
             npy = np.array([y.getRootY() for y in lines])
             page_height = np.max(npy)-np.min(npy)
         else:
-            lines=[BBOXNormalizedLine.from_azure(i,line, 1) for i,line in enumerate(page["lines"])]
+            lines=[BBOXNormalizedLine.from_azure(i,line, ppi) for i,line in enumerate(page["lines"])]
 
         bboxlogger.debug("Azure|Page shape (Height,Width) ({0},{1})".format(page_width,page_height))
 
@@ -397,13 +395,8 @@ class BBOXPageLayout():
         if "unit" in page:
             page_unit=page["unit"]
             if page_unit=="inch":
-                # Azure OCR response doesn't provide the ppi per page
-                # so we need to determine it for normalizing the processing of lines
-                # ppi=BBoxUtils.determine_ppi(data["width"],data["height"])
-                
-                # decimal precision on Azure is set to 4, so we can set a 10000 to normalize the box and 
-                # not convert to pixel
-                ppi=10000
+                # Fix a 300 ppi for inch to pixel conversion. All coordinates will be rounded to the nearest integer.
+                ppi=300                
             else:
                 ppi=1
         else:

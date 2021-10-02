@@ -410,7 +410,7 @@ class BBoxHelper():
                 bboxlogger.debug("{0}|Default sorting strategy".format(str(page.id)))
                 sortedBlocks = sorted(outlines,key= lambda o: (o.boundingbox[0].X, o.ymedian))
         else:
-            sortedBlocks = sortingAlgo(page.id,page.width,page.height,blocks=outlines,scale=page.ppi)
+            sortedBlocks = sortingAlgo(page.id,page.width,page.height,blocks=outlines)
 
         bboxlogger.debug("{1}|Output {0} lines after sorting...".format(len(sortedBlocks),str(page.id)))
 
