@@ -66,7 +66,7 @@ class GoogleOCREngine(OCREngine):
         # Check if we have a cached ocr response already for this provider
         invokeOCR=callOCR
         if not callOCR:
-            if not os.path.exists(os.path.join(self.RESULTS_FOLDER, imgname+".google.vision.json")):
+            if not os.path.exists(os.path.join(self.RESULTS_FOLDER, p.name, "google.vision.json")):
                 invokeOCR=True
 
         if invokeOCR:
@@ -82,14 +82,14 @@ class GoogleOCREngine(OCREngine):
             response = google_client.document_text_detection(image=image)
             json_string=json_format.MessageToJson(response)
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.vision.json"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "google.vision.json"), 'w') as outfile:
                 outfile.write(json_string)
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.vision.txt"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "google.vision.txt"), 'w') as outfile:
                 outfile.write(response.full_text_annotation.text)
         else:
             # Use local OCR cached response when available
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.vision.json"), 'r') as cachefile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "google.vision.json"), 'r') as cachefile:
                 json_string = cachefile.read().replace('\n', '')
 
         # Create BBOX OCR Response from Google's JSON output
@@ -99,12 +99,12 @@ class GoogleOCREngine(OCREngine):
             print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
             converted=BBOXOCRResponse.from_google(json.loads(json_string))
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.converted.json"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "google.converted.json"), 'w') as outfile:
                 outfile.write(json.dumps(converted.__dict__, default = lambda o: o.__dict__, indent=4))
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox.json"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "google.bbox.json"), 'w') as outfile:
                 outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox.txt"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "google.bbox.txt"), 'w') as outfile:
                 outfile.write(bboxresponse.text)
 
             document = response.full_text_annotation
@@ -129,11 +129,11 @@ class GoogleOCREngine(OCREngine):
                     self.draw_boxes(image, bounds[FeatureType.WORD.value], 'yellow')
                     self.draw_boxes(image, bounds[FeatureType.PARA.value], 'red',padding=1)
                     self.draw_boxes(image, bounds[FeatureType.BLOCK.value], 'blue',padding=2)       
-                    image.save(os.path.join(self.RESULTS_FOLDER, imgname+".google"+imgext))
+                    image.save(os.path.join(self.RESULTS_FOLDER, p.name, "google"+imgext))
                     
                     # Write the BBOX resulted image 
                     OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".google.bbox"+imgext))
+                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, p.name, "google.bbox"+imgext))
             except Exception as ex:
                 print(ex)
                 pass

@@ -66,7 +66,7 @@ class AWSOCREngine(OCREngine):
         # Check if we have a cached ocr response already for this provider
         invokeOCR=callOCR
         if not callOCR:
-            if not os.path.exists(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.json")):
+            if not os.path.exists(os.path.join(self.RESULTS_FOLDER, p.name, "aws.textextract.json")):
                 invokeOCR=True
 
         if invokeOCR :
@@ -80,17 +80,17 @@ class AWSOCREngine(OCREngine):
             # Call Amazon Textract
             ocrresponse = textract.detect_document_text(Document={'Bytes': bytes_test })
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.json"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "aws.textextract.json"), 'w') as outfile:
                 outfile.write(json.dumps(ocrresponse))
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.txt"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "aws.textextract.txt"), 'w') as outfile:
                 for item in ocrresponse["Blocks"]:
                     if item["BlockType"] == "LINE":
                         outfile.write(item["Text"])
                         outfile.write('\n')
         else:
             # Use local OCR cached response when available
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.json"), 'r') as cachefile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "aws.textextract.json"), 'r') as cachefile:
                 ocrresponse = cachefile.read().replace('\n', '')
 
         try:
@@ -107,10 +107,10 @@ class AWSOCREngine(OCREngine):
                     print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
                     # Write the improved ocr response
-                    with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox.json"), 'w') as outfile:
+                    with open(os.path.join(self.RESULTS_FOLDER, p.name, "aws.textextract.bbox.json"), 'w') as outfile:
                         outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
                     # Write the improved ocr text
-                    with open(os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox.txt"), 'w') as outfile:
+                    with open(os.path.join(self.RESULTS_FOLDER, p.name, "aws.textextract.bbox.txt"), 'w') as outfile:
                         outfile.write(bboxresponse.text)
 
                     # Create the Before and After images
@@ -123,11 +123,11 @@ class AWSOCREngine(OCREngine):
                         if block["BlockType"] == "WORD":
                             image = self.draw_boxes(image,block["Geometry"]["Polygon"],'yellow',padding=1)
 
-                    OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract"+imgext))
+                    OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, p.name, "aws.textextract"+imgext))
 
                     # Write the BBOX resulted boxes image
                     OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".aws.textextract.bbox"+imgext))
+                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, p.name, "aws.textextract.bbox"+imgext))
                 else:
                     print("BBOX Helper Invalid Response. Input was {}".format(ocrresponse))             
 

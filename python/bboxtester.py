@@ -56,13 +56,17 @@ def iterate_all_images(ocrengines=[],filter=None,callOCR=True,verbose=False):
             continue
         imgfullpath=os.path.join(IMAGES_FOLDER, filename)
 
+        imgresultpath=os.path.join(RESULTS_FOLDER, filename)
+        if not os.path.exists(imgresultpath):
+            os.makedirs(imgresultpath)
+
         start = timer()
         print(f"{filename} started at {time.strftime('%X')}")
 
         p = Path(filename)
         (imgname,imgext) = os.path.splitext(p.name)
         if imgext not in '.pdf':
-            OCRUtils.draw_cv2_boxes(image=imgfullpath,outputdir=RESULTS_FOLDER)
+            OCRUtils.draw_cv2_boxes(image=imgfullpath,outputdir=imgresultpath)
 
         for engine in ocrengines:
             engine.detect_text(imgfullpath, callOCR, verbose)
@@ -80,8 +84,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Call OCR outputs for a given image or images dir')
     parser.add_argument('--image',type=str,required=False,help='Process a single image',default=None)
     parser.add_argument('--imagesdir',type=str,required=False,help='Process all images contained in the given directory',default=IMAGES_FOLDER)
-    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="99999")
-    # parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename')
+    # parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename',default="1506.01497-Page5")
+    parser.add_argument('--filter',type=str,required=False,help='Filter the images to process based on their filename')
     parser.add_argument('--outputdir',type=str,required=False,help='Define where all outputs will be stored',default=RESULTS_FOLDER)
     parser.add_argument('--callocr', dest='callocr', action='store_true',help='flag to invoke online OCR Service',default=False)
     parser.add_argument('-v','--verbose', dest='verbose', action='store_true',help='DEBUG logging level',default=False)

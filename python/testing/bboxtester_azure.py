@@ -69,7 +69,7 @@ class AzureOCREngine(AzureEngine):
         # Check if we have a cached ocr response already for this provider
         invokeOCR=callOCR
         if not callOCR:
-            if not os.path.exists(os.path.join(self.RESULTS_FOLDER, imgname+".azure.ocr.json")):
+            if not os.path.exists(os.path.join(self.RESULTS_FOLDER, p.name, "azure.ocr.json")):
                 invokeOCR=True
 
         ocrexception=False
@@ -86,10 +86,10 @@ class AzureOCREngine(AzureEngine):
                 # response.raise_for_status()
                 image_analysis=response.json()
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.ocr.json"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "azure.ocr.json"), 'w') as outfile:
                 outfile.write(response.content.decode("utf-8"))
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.ocr.txt"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "azure.ocr.txt"), 'w') as outfile:
                 if "regions" in image_analysis:
                     # Extract the word bounding boxes and text.
                     line_infos = [region["lines"] for region in image_analysis["regions"]]
@@ -103,7 +103,7 @@ class AzureOCREngine(AzureEngine):
             ocrresponse=response.content.decode("utf-8")
         else:
             # Use local OCR cached response when available
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.ocr.json"), 'r') as cachefile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "azure.ocr.json"), 'r') as cachefile:
                 ocrresponse = cachefile.read().replace('\n', '')
 
         if not ocrexception:
@@ -112,10 +112,10 @@ class AzureOCREngine(AzureEngine):
             print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
             # Write the improved ocr response
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.ocr.bbox.json"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "azure.ocr.bbox.json"), 'w') as outfile:
                 outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
             # Write the improved ocr text
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.ocr.bbox.txt"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "azure.ocr.bbox.txt"), 'w') as outfile:
                 outfile.write(bboxresponse.text)
 
             try:
@@ -142,11 +142,11 @@ class AzureOCREngine(AzureEngine):
                                 image = self.draw_boxes(image,word["boundingBox"],'yellow')
                             image = self.draw_boxes(image,line["boundingBox"],'red',padding=1)
 
-                    OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, imgname+".azure.ocr"+imgext))
+                    OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, p.name, "azure.ocr"+imgext))
 
                     # Write the BBOX resulted boxes image
                     OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".azure.ocr.bbox"+imgext))
+                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, p.name, "azure.ocr.bbox"+imgext))
             except Exception as ex:
                 print(ex)
                 pass
@@ -168,7 +168,7 @@ class AzureReadEngine(AzureEngine):
         # Check if we have a cached ocr response already for this provider
         invokeOCR=callOCR
         if not callOCR:
-            if not os.path.exists(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.json")):
+            if not os.path.exists(os.path.join(self.RESULTS_FOLDER, p.name, "azure.read.json")):
                 invokeOCR=True
 
         if invokeOCR:
@@ -187,10 +187,10 @@ class AzureReadEngine(AzureEngine):
             print("\tJob completion is: {}".format(image_analysis.output.status))
             print("\tRecognized {} page(s)".format(len(image_analysis.output.analyze_result.read_results)))
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.json"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "azure.read.json"), 'w') as outfile:
                 outfile.write(image_analysis.response.content.decode("utf-8"))
 
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.txt"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "azure.read.txt"), 'w') as outfile:
                 for rec in image_analysis.output.analyze_result.read_results:
                     for line in rec.lines:
                         outfile.write(line.text)
@@ -199,7 +199,7 @@ class AzureReadEngine(AzureEngine):
             ocrresponse=image_analysis.response.content.decode("utf-8")
         else:
             # Use local OCR cached response when available
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.json"), 'r') as cachefile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name, "azure.read.json"), 'r') as cachefile:
                 ocrresponse = cachefile.read().replace('\n', '')
 
         # Create BBOX OCR Response from Azure CV string response
@@ -209,10 +209,10 @@ class AzureReadEngine(AzureEngine):
             print("BBOX Helper Response {}".format(bboxresponse.__dict__))
 
             # Write the improved ocr response
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox.json"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name,"azure.read.bbox.json"), 'w') as outfile:
                 outfile.write(json.dumps(bboxresponse.__dict__, default = lambda o: o.__dict__, indent=4))
             # Write the improved ocr text
-            with open(os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox.txt"), 'w') as outfile:
+            with open(os.path.join(self.RESULTS_FOLDER, p.name,"azure.read.bbox.txt"), 'w') as outfile:
                 outfile.write(bboxresponse.text)
 
         try:
@@ -239,12 +239,12 @@ class AzureReadEngine(AzureEngine):
                             image = self.draw_boxes(image,word["boundingBox"],'yellow')
                         image = self.draw_boxes(image,line["boundingBox"],'red',padding=1)
 
-                OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, imgname+".azure.read"+imgext))
+                OCRUtils.save_boxed_image(image,os.path.join(self.RESULTS_FOLDER, p.name, "azure.read"+imgext))
 
                 if bboxresponse:
                     # Write the BBOX resulted boxes image
                     OCRUtils.draw_bboxes(bboximg, bboxresponse, 'black',padding=1)
-                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, imgname+".azure.read.bbox"+imgext))
+                    OCRUtils.save_boxed_image(bboximg,os.path.join(self.RESULTS_FOLDER, p.name, "azure.read.bbox"+imgext))
         except Exception as ex:
             print(ex)
             pass
