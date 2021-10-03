@@ -337,7 +337,7 @@ class BBoxSort():
                 else:
                     if (len(oppositeAxisSubClusters) > 0):
                         # the single opposite cluster will be used to determine the block id
-                        bboxlogger.debug("Level {0} Cluster {1} - Found opposite cluster ".format(level,i,str(len(oppositeAxisSubClusters))))
+                        bboxlogger.debug("Level {0} Cluster {1} - Unique opposite cluster found".format(level,i))
                         opposite_cluster=oppositeAxisSubClusters[0]
                         cluster.blockid=int(opposite_cluster.axis_sum/cluster.axis_size)
                         bboxlogger.debug("Level {0} Cluster {1} - Assigned Block Id {2}".format(level,i,cluster.blockid))

@@ -12,12 +12,27 @@ bboxconfig = BBOXConfig.get_config()
 from . import bboxlog
 bboxlogger = bboxlog.get_logger()
 
-# random.randint(0,65535)
-BLOCK_ID_COUNTER=0
-
 #
 # Bounding Boxes OCR Model Classes
 #
+
+class AlignmentRegion():
+
+    def __init__(self, idx, alignment) -> None:
+        self.regionidx=idx
+        self.alignment=alignment
+        self.regionx=0.0
+        self.lowy=0.0
+        self.highy=0.0
+        self.lines=list()
+
+    def appendLine(self, line):
+        self.lines.append(line)
+        if self.lowy == 0.0:
+            self.lowy = line.getRootY()
+        else:
+            self.lowy=min(self.lowy,line.getRootY())
+        self.highy=max(self.highy,line.getHighestY())
 
 #
 # Point but...
@@ -74,11 +89,9 @@ class BBOXPoint():
 #
 class BBOXNormalizedLine():
     def __init__(self, Idx, BoundingBox: List[BBOXPoint], Text:str = None, merged:bool=False, avg_height=0.0, std_height=0.0, words_count=0):
-        global BLOCK_ID_COUNTER
-        BLOCK_ID_COUNTER+=1
-        self.id=BLOCK_ID_COUNTER
-        self.start_idx=Idx+1
-        self.end_idx=Idx+1
+        self.id=Idx+1
+        self.start_block_id=Idx+1
+        self.end_block_id=Idx+1
         self.boundingbox = BoundingBox
         self.text = None
         self.words_count=words_count
@@ -92,6 +105,7 @@ class BBOXNormalizedLine():
         self.subcluster=-1
 
     def calculateMedians(self):
+        # Work only if the bbox are normalized to rectangles. TODO
         self.xmedian=(min(self.boundingbox[0].X,self.boundingbox[3].X) + max(self.boundingbox[1].X,self.boundingbox[2].X))/2
         self.ymedian=(min(self.boundingbox[0].Y,self.boundingbox[3].Y) + max(self.boundingbox[1].Y,self.boundingbox[2].Y))/2
         self.xtimesy=self.boundingbox[0].X*self.boundingbox[0].Y
@@ -102,6 +116,12 @@ class BBOXNormalizedLine():
         return self.boundingbox[0].X
     def getRootY(self):
         return self.boundingbox[0].Y
+
+    def getHighestX(self):
+        return max(self.boundingbox[0].X,self.boundingbox[1].X,self.boundingbox[2].X,self.boundingbox[3].X)
+    def getHighestY(self):
+        return max(self.boundingbox[0].Y,self.boundingbox[1].Y,self.boundingbox[2].Y,self.boundingbox[3].Y)
+
     def getClusterId(self):
         return self.listids[0]
 
@@ -146,7 +166,7 @@ class BBOXNormalizedLine():
         self.boundingbox[2] = BBoxUtils.maxXmaxY(2,self,line)
         self.boundingbox[3] = BBoxUtils.minXmaxY(3,self,line)
         self.calculateMedians()
-        self.end_idx=line.end_idx
+        self.end_block_id=line.end_block_id
         self.words_count+=line.words_count
         
     @classmethod

@@ -6,10 +6,11 @@ import logging.config
 import os
 import time
 import math
+import numpy as np
 from timeit import default_timer as timer
 
 # BBOX Model 
-from .bboxmodel import BBOXOCRResponse, BBOXPageLayout
+from .bboxmodel import AlignmentRegion, BBOXOCRResponse, BBOXPageLayout
 # BBOX Utils
 from .bboxutils import BBOXAnnotate, BBoxSort, BBoxUtils
 
@@ -271,7 +272,7 @@ class BBoxHelper():
 
         return response
 
-    def __processLineBoundingBoxes(self, lines, alignment, unit, ppi):
+    def __processLineBoundingBoxes(self, lines, alignment, unit, ppi , first_pass=True):
         """__processLineBoundingBoxes method
         Process an OCR Response input (Azure,Google,AWS) and returns a new BBox format OCR response.
 
@@ -301,9 +302,12 @@ class BBoxHelper():
         bboxlogger.debug("bounding boxes count {}".format(len(XSortedList)))
 
         regions = list(list())
-        regions.append(list())
-        regionx = 0.0
-        regionidx = 0
+        # regions.append(list())
+        # regionx = 0.0
+        # regionidx = 0
+
+        _region=AlignmentRegion(0,alignment)
+        regions.append(_region)
 
         # STEP 1 - X-Axis sorted 
         # //First Pass on the X Axis 
@@ -313,33 +317,45 @@ class BBoxHelper():
             if (alignment == CenteredAlignment):
                 xcurrent = line.xmedian
 
-            lowb=math.floor(regionx - (Xthresholdratio * bboxconfig.get_ImageTextBoxingXThreshold(unit,ppi)))
-            highb=math.ceil(regionx + (Xthresholdratio * bboxconfig.get_ImageTextBoxingXThreshold(unit,ppi)))
+            lowb=math.floor(_region.regionx - (Xthresholdratio * bboxconfig.get_ImageTextBoxingXThreshold(unit,ppi)))
+            highb=math.ceil(_region.regionx + (Xthresholdratio * bboxconfig.get_ImageTextBoxingXThreshold(unit,ppi)))
+
+            # same_region_cond = (lowb <= xcurrent and xcurrent <= highb and ( (_region.lowy <= line.getRootY() <= _region.highy) or np.absolute(line.getRootY()-_region.highy)<80))
+            if first_pass:
+                same_region_cond = (lowb <= xcurrent and xcurrent <= highb)
+            else:
+                same_region_cond = (lowb <= xcurrent and xcurrent <= highb) and (_region.lowy <= line.getRootY() <= _region.highy)
 
             if lowb>0.0:
-                bboxlogger.debug("{6}|Region X-step Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(regionidx),str(regionx),str(lowb),str(xcurrent),str(highb),str((xcurrent >= lowb and xcurrent <= highb)),alignment))
-
-            if (regionx == 0.0):
-                regions[regionidx].append(line)
-                regionx = xcurrent
+                bboxlogger.debug("{6}|Region X-step Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(_region.regionidx),str(_region.regionx),str(lowb),str(xcurrent),str(highb),str(same_region_cond),alignment))
+            
+            if (_region.regionx == 0.0):
+                # regions[_region.regionidx].append(line)
+                _region.appendLine(line)
+                _region.regionx = xcurrent
             # //can be improved by testing the upper X boundaries eventually
-            elif (xcurrent >= lowb and xcurrent <= highb):
-                regions[regionidx].append(line)
+            elif same_region_cond:
+                # regions[_region.regionidx].append(line)
+                _region.appendLine(line)
                 # Adjust the regionx to take care of slight deviation
                 if ( not alignment == CenteredAlignment ):
-                    regionx = math.floor((xcurrent + regionx) / 2)
+                    _region.regionx = math.floor((xcurrent + _region.regionx) / 2)
             else:
+                _region=AlignmentRegion(_region.regionidx+1,alignment)
+                _region.appendLine(line)
                 # // Add new region 
-                regions.append(list())
-                regionidx+=1
-                regions[regionidx].append(line)
-                regionx = xcurrent
+                # regions.append(list())
+                # regionidx+=1
+                # regions[regionidx].append(line)
+                _region.regionx = xcurrent
+                regions.append(_region)
 
-        bboxlogger.debug("{1}|Found {0} regions.".format(len(regions),alignment))
+        bboxlogger.debug("{1}|Found {0} regions.".format(len(regions),alignment))   
 
         # STEP 2 - Y-Axis sorted 
         # //Second Pass on the Y Axis 
-        for regidx,lines in enumerate(regions):
+        for regidx,region in enumerate(regions):
+            lines = region.lines
             lines.sort(key=lambda o : o.boundingbox[boxref].Y)
             # YSortedList = sorted(lines,key=lambda o : o.boundingbox[boxref].Y)
             # // the entries are now sorted ascending their Y axis
@@ -353,7 +369,7 @@ class BBoxHelper():
                 lowb=math.floor(regiony-(regiony*0.05))
                 highb=math.ceil((regiony + (Ythresholdratio * bboxconfig.get_ImageTextBoxingYThreshold(unit,ppi))))
 
-                bboxlogger.debug("{7}-{8}|Line bbox {0} {6} {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.boundingbox),str(line.text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent <= highb)),str(regiony),alignment,regidx))
+                bboxlogger.debug("{7}-{8}|Line bbox {0} {6} text {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.boundingbox),str(line.text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent <= highb)),str(regiony),alignment,regidx))
 
                 if (regiony == 0.0):
                     prevline = line
@@ -386,7 +402,7 @@ class BBoxHelper():
         #
         # Another pass on LeftAlignment
         bboxlogger.debug("{1}-2|Processing {0}".format(LeftAlignment,str(page.id)))
-        page.lines = self.__processLineBoundingBoxes(page.lines,LeftAlignment,page.unit,page.ppi)
+        page.lines = self.__processLineBoundingBoxes(page.lines,LeftAlignment,page.unit,page.ppi,first_pass=False)
 
         outlines=[o for o in page.lines if o.merged == False]
         bboxlogger.debug("{1}|Output {0} lines before sorting...".format(len(outlines),str(page.id)))
@@ -433,8 +449,9 @@ class BBoxHelper():
                 else:
                     # look ahead the next block see if we could do a last minute merge on the text only. 
                     if (i+1<len(sortedBlocks)):
-                        # if block.getClusterId() != sortedBlocks[i+1].getClusterId() and (not sortedBlocks[i+1].text[0].isupper()):
-                        if not (block.text.isupper() or sortedBlocks[i+1].text[0].isupper() or sortedBlocks[i+1].text[0].isdigit()):
+                        if (block.text.isupper() or block.text.isdigit() or sortedBlocks[i+1].text[0].isupper() or sortedBlocks[i+1].text[0].isdigit()):
+                            newtext+=os.linesep
+                        else:
                             if block.text.strip().endswith("."):
                                 newtext+=os.linesep
                             elif block.text.strip().endswith("-"):
@@ -442,10 +459,6 @@ class BBoxHelper():
                                 # newtext+=''
                             else:
                                 newtext+=' '
-                        # elif (not sortedBlocks[i+1].text[0].isupper()):
-                        #     newtext+=' '
-                        else:
-                            newtext+=os.linesep
                     # Default separator
                     # if block.Text.strip().endswith("."):
                     # newtext+='\r\n'
