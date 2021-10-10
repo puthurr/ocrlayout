@@ -282,19 +282,25 @@ class BBoxHelper():
         boxref = 0
         Xthresholdratio = bboxconfig.get_Thresholds(unit,ppi)[alignment].Xthresholdratio
         Ythresholdratio = bboxconfig.get_Thresholds(unit,ppi)[alignment].Ythresholdratio
+
+        # Sorting order
+        sortDescending=not first_pass
+        # Left Alignment
         if ( alignment == LeftAlignment):
             boxref = 0
             # //Adjustment for bullet list text. 
             for line in lines:
                 if (line.text.startswith(". ")):
                     line.boundingbox[boxref].X = line.boundingbox[boxref].X + bboxconfig.get_ImageTextBoxingBulletListAdjustment(unit,ppi)
-            XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.boundingbox[boxref].X,o.boundingbox[boxref].Y))
-        elif (alignment == RightAlignment):
-            boxref = 1
-            XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: o.boundingbox[boxref].X,reverse=True)
+            XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.boundingbox[boxref].X,o.boundingbox[boxref].Y),reverse=sortDescending)
+        # Center Alignment
         elif (alignment == CenteredAlignment):
             boxref = 1
-            XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.xmedian,o.boundingbox[boxref].Y))
+            XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.xmedian,o.boundingbox[boxref].Y),reverse=sortDescending)
+        # Right Alignment
+        elif (alignment == RightAlignment):
+            boxref = 1
+            XSortedList = sorted([o for o in lines if o.merged == False],key= lambda o: (o.boundingbox[boxref].X,o.boundingbox[boxref].Y),reverse=True)
         else:
             bboxlogger.error("__processLineBoundingBoxes : Unknown text alignment")
             XSortedList=[]
@@ -324,7 +330,8 @@ class BBoxHelper():
             if first_pass:
                 same_region_cond = (lowb <= xcurrent and xcurrent <= highb)
             else:
-                same_region_cond = (lowb <= xcurrent and xcurrent <= highb) and (_region.lowy <= line.getRootY() <= _region.highy)
+                # same_region_cond = (lowb <= xcurrent and xcurrent <= highb) and (_region.lowy <= line.getRootY() <= _region.highy)
+                same_region_cond = (lowb <= xcurrent and xcurrent <= highb)
 
             if lowb>0.0:
                 bboxlogger.debug("{6}|Region X-step Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(_region.regionidx),str(_region.regionx),str(lowb),str(xcurrent),str(highb),str(same_region_cond),alignment))
@@ -388,88 +395,92 @@ class BBoxHelper():
         """ processOCRPageLayout method
             Process a single page from an OCR input, returns the same page with enhanced boxing data & text.
         """
-        inlines=[o for o in page.lines if o.merged == False]
-        bboxlogger.debug("{1}|Input # lines {0}".format(len(inlines),str(page.id)))
+        if len(page.lines)>0:
+            
+            inlines=[o for o in page.lines if o.merged == False]
+            bboxlogger.debug("{1}|Input # lines {0}".format(len(inlines),str(page.id)))
 
-        # STEP 1 - ALIGNMENT-BASED MERGE 
-        #
-        # Go through potential Text Alignment : Left, Right and Centered.
-        for alignment in Alignments:
-            bboxlogger.debug("{1}|Processing {0}".format(alignment,str(page.id)))
-            page.lines = self.__processLineBoundingBoxes(page.lines,alignment,page.unit,page.ppi)
+            # STEP 1 - ALIGNMENT-BASED MERGE 
+            #
+            # Go through potential Text Alignment : Left, Right and Centered.
+            for alignment in Alignments:
+                bboxlogger.debug("{1}|Processing {0}".format(alignment,str(page.id)))
+                page.lines = self.__processLineBoundingBoxes(page.lines,alignment,page.unit,page.ppi)
 
-        # STEP 2 - EXTRA LEFT-ALIGNMENT-BASED MERGE 
-        #
-        # Another pass on LeftAlignment
-        bboxlogger.debug("{1}-2|Processing {0}".format(LeftAlignment,str(page.id)))
-        page.lines = self.__processLineBoundingBoxes(page.lines,LeftAlignment,page.unit,page.ppi,first_pass=False)
+            # STEP 2 - EXTRA LEFT-ALIGNMENT-BASED MERGE 
+            #
+            # Another pass on LeftAlignment
+            bboxlogger.debug("{1}-2|Processing {0}".format(LeftAlignment,str(page.id)))
+            page.lines = self.__processLineBoundingBoxes(page.lines,LeftAlignment,page.unit,page.ppi,first_pass=False)
 
-        outlines=[o for o in page.lines if o.merged == False]
-        bboxlogger.debug("{1}|Output {0} lines before sorting...".format(len(outlines),str(page.id)))
+            outlines=[o for o in page.lines if o.merged == False]
+            bboxlogger.debug("{1}|Output {0} lines before sorting...".format(len(outlines),str(page.id)))
 
-        # STEP 3 - SORTING
-        #
-        # Page lines Sorting
-        # 
-        if sortingAlgo is None:
-            # Old Default Sorting Strategy 
-            # Based on the W/H ratio we set the sorting strategy
-            if page.Width/page.Height > 1.0:
-                YXSortedOutput=False
-            else: 
-                YXSortedOutput=True
+            # STEP 3 - SORTING
+            #
+            # Page lines Sorting
+            # 
+            if sortingAlgo is None:
+                # Old Default Sorting Strategy 
+                # Based on the W/H ratio we set the sorting strategy
+                if page.Width/page.Height > 1.0:
+                    YXSortedOutput=False
+                else: 
+                    YXSortedOutput=True
 
-            if (YXSortedOutput):
-                bboxlogger.debug("{0}|Sorting by YX".format(str(page.id)))
-                sortedBlocks = sorted(outlines,key= lambda o: (o.boundingbox[0].Y, o.xmedian))
-            else:
-                bboxlogger.debug("{0}|Default sorting strategy".format(str(page.id)))
-                sortedBlocks = sorted(outlines,key= lambda o: (o.boundingbox[0].X, o.ymedian))
-        else:
-            sortedBlocks = sortingAlgo(page.id,page.width,page.height,blocks=outlines)
-
-        bboxlogger.debug("{1}|Output {0} lines after sorting...".format(len(sortedBlocks),str(page.id)))
-
-        # STEP 4 - TEXT OUTPUT
-        # Once sorted correctly with reading approx we can output the actual text 
-        # 
-        newtext = ""
-        for i,block in enumerate(sortedBlocks):
-            if boxSeparator is None:
-                if self.annotate and bboxannotate.blockTag:
-                    newtext+=bboxannotate.blockTag[0]
-            else:
-                newtext+=boxSeparator[0]
-
-            newtext+=block.text
-
-            if boxSeparator is None:
-                if self.annotate and bboxannotate.blockTag:
-                    newtext+=bboxannotate.blockTag[1]
+                if (YXSortedOutput):
+                    bboxlogger.debug("{0}|Sorting by YX".format(str(page.id)))
+                    sortedBlocks = sorted(outlines,key= lambda o: (o.boundingbox[0].Y, o.xmedian))
                 else:
-                    # look ahead the next block see if we could do a last minute merge on the text only. 
-                    if (i+1<len(sortedBlocks)):
-                        if (block.text.isupper() or block.text.isdigit() or sortedBlocks[i+1].text[0].isupper() or sortedBlocks[i+1].text[0].isdigit()):
-                            newtext+=os.linesep
-                        else:
-                            if block.text.strip().endswith("."):
-                                newtext+=os.linesep
-                            elif block.text.strip().endswith("-"):
-                                newtext=newtext[:-1]
-                                # newtext+=''
-                            else:
-                                newtext+=' '
-                    # Default separator
-                    # if block.Text.strip().endswith("."):
-                    # newtext+='\r\n'
-                    # else:
-                    #     newtext+=' '
+                    bboxlogger.debug("{0}|Default sorting strategy".format(str(page.id)))
+                    sortedBlocks = sorted(outlines,key= lambda o: (o.boundingbox[0].X, o.ymedian))
             else:
-                newtext+=boxSeparator[1]
+                sortedBlocks = sortingAlgo(page.id,page.width,page.height,blocks=outlines)
 
-        # // Setting the new Normalized Lines we created.
-        page.lines = sortedBlocks
-        # // Updating the Text after our processing.
-        page.text = newtext
+            bboxlogger.debug("{1}|Output {0} lines after sorting...".format(len(sortedBlocks),str(page.id)))
+
+            # STEP 4 - TEXT OUTPUT
+            # Once sorted correctly with reading approx we can output the actual text 
+            # 
+            newtext = ""
+            for i,block in enumerate(sortedBlocks):
+                if boxSeparator is None:
+                    if self.annotate and bboxannotate.blockTag:
+                        newtext+=bboxannotate.blockTag[0]
+                else:
+                    newtext+=boxSeparator[0]
+
+                newtext+=block.text
+
+                if boxSeparator is None:
+                    if self.annotate and bboxannotate.blockTag:
+                        newtext+=bboxannotate.blockTag[1]
+                    else:
+                        # look ahead the next block see if we could do a last minute merge on the text only. 
+                        if (i+1<len(sortedBlocks)):
+                            if (block.text.isupper() or block.text.isdigit() or sortedBlocks[i+1].text[0].isupper() or sortedBlocks[i+1].text[0].isdigit()):
+                                newtext+=os.linesep
+                            else:
+                                if block.text.strip().endswith("."):
+                                    newtext+=os.linesep
+                                elif block.text.strip().endswith("-"):
+                                    newtext=newtext[:-1]
+                                    # newtext+=''
+                                else:
+                                    newtext+=' '
+                        # Default separator
+                        # if block.Text.strip().endswith("."):
+                        # newtext+='\r\n'
+                        # else:
+                        #     newtext+=' '
+                else:
+                    newtext+=boxSeparator[1]
+
+            # // Setting the new Normalized Lines we created.
+            page.lines = sortedBlocks
+            # // Updating the Text after our processing.
+            page.text = newtext
+        else:
+            page.text = ''
 
         return page
