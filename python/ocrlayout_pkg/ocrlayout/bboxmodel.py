@@ -278,7 +278,7 @@ class BBOXPageLayout():
             page_unit=page["unit"]
             if page_unit=="inch":
                 # Fix a 300 ppi for inch to pixel conversion. All coordinates will be rounded to the nearest integer.
-                ppi=300
+                ppi=200
             else:
                 ppi=1
         else:
@@ -416,7 +416,7 @@ class BBOXPageLayout():
             page_unit=page["unit"]
             if page_unit=="inch":
                 # Fix a 300 ppi for inch to pixel conversion. All coordinates will be rounded to the nearest integer.
-                ppi=300                
+                ppi=200                
             else:
                 ppi=1
         else:
