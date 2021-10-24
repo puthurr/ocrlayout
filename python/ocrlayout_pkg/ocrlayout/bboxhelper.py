@@ -234,15 +234,6 @@ class BBoxHelper():
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_pages = {executor.submit(self.__processPage, page, sortingAlgo, boxSeparator):page.id for page in response.pages}
                 concurrent.futures.wait(future_pages,return_when=concurrent.futures.ALL_COMPLETED)
-                # for future in concurrent.futures.as_completed(future_pages):
-                #         page_id = future_pages[future]
-                #         bboxlogger.debug('Thread - page %r completed ' % (page_id))
-                #         try:
-                #             data = future.result()
-                #         except Exception as exc:
-                #             bboxlogger.debug('Thread - Page %r generated an exception: %s' % (page_id, exc))
-                #         else:
-                #             bboxlogger.debug('Thread - Page %r page is %d lines' % (page_id, len(data.lines)))
         else:
             # Process each page sequentially
             for page in response.pages:
@@ -337,12 +328,10 @@ class BBoxHelper():
                 bboxlogger.debug("{6}|Region X-step Id:{0} X:{1} LowX {2}<{3}<{4} HighX | Same Region? {5} ".format(str(_region.regionidx),str(_region.regionx),str(lowb),str(xcurrent),str(highb),str(same_region_cond),alignment))
             
             if (_region.regionx == 0.0):
-                # regions[_region.regionidx].append(line)
                 _region.appendLine(line)
                 _region.regionx = xcurrent
             # //can be improved by testing the upper X boundaries eventually
             elif same_region_cond:
-                # regions[_region.regionidx].append(line)
                 _region.appendLine(line)
                 # Adjust the regionx to take care of slight deviation
                 if ( not alignment == CenteredAlignment ):
@@ -376,7 +365,7 @@ class BBoxHelper():
                 lowb=math.floor(regiony-(regiony*0.05))
                 highb=math.ceil((regiony + (Ythresholdratio * bboxconfig.get_ImageTextBoxingYThreshold(unit,ppi))))
 
-                bboxlogger.debug("{7}-{8}|Line bbox {0} {6} text {1} | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.boundingbox),str(line.text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent <= highb)),str(regiony),alignment,regidx))
+                bboxlogger.debug("{7}-{8}|Line bbox {0} {6} [{1}] | LowY {2}<{3}<{4} HighY | Merge {5}".format(str(line.boundingbox),str(line.text),str(lowb),str(ycurrent),str(highb),str((ycurrent >= lowb and ycurrent <= highb)),str(regiony),alignment,regidx))
 
                 if (regiony == 0.0):
                     prevline = line
