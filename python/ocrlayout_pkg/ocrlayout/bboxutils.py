@@ -110,12 +110,18 @@ class BBoxUtils():
 
     @classmethod
     def enforceRectangle(cls,line): 
+        # # X 
+        # line.boundingbox[0].X=line.boundingbox[3].X = min(line.boundingbox[0].X,line.boundingbox[3].X)
+        # line.boundingbox[1].X=line.boundingbox[2].X = max(line.boundingbox[1].X,line.boundingbox[2].X)
+        # # Y
+        # line.boundingbox[0].Y=line.boundingbox[1].Y = min(line.boundingbox[0].Y,line.boundingbox[1].Y)
+        # line.boundingbox[2].Y=line.boundingbox[3].Y = max(line.boundingbox[2].Y,line.boundingbox[3].Y)
         # X 
         line.boundingbox[0].X=line.boundingbox[3].X = min(line.boundingbox[0].X,line.boundingbox[3].X)
-        line.boundingbox[1].X=line.boundingbox[2].X = max(line.boundingbox[1].X,line.boundingbox[2].X)
+        line.boundingbox[1].X=line.boundingbox[2].X = min(line.boundingbox[1].X,line.boundingbox[2].X)
         # Y
         line.boundingbox[0].Y=line.boundingbox[1].Y = min(line.boundingbox[0].Y,line.boundingbox[1].Y)
-        line.boundingbox[2].Y=line.boundingbox[3].Y = max(line.boundingbox[2].Y,line.boundingbox[3].Y)
+        line.boundingbox[2].Y=line.boundingbox[3].Y = min(line.boundingbox[2].Y,line.boundingbox[3].Y)
 
     @classmethod
     def draw_boxes_on_page(cls,canvas,blocks,scale=1):
@@ -427,56 +433,93 @@ class BBoxSort():
         # store line number,  x value and contour index in list
         for i,cluster in enumerate(clusters):
             lines_counter=0
-            bboxlogger.debug("Cluster {0} Axis {5} StartIndex {1} EndIndex {2} Size {3} BlockId {4}".format(i,cluster.startindex,cluster.endindex,cluster.axis_size,cluster.blockid,cluster.axis))
+            bboxlogger.debug("Cluster {0} Axis {5} StartIndex {1} EndIndex {2} Size {3} Expected BlockId {4}".format(i,cluster.startindex,cluster.endindex,cluster.axis_size,cluster.blockid,cluster.axis))
 
-            # Loop through non assigned blocks.
+            # First Pass - Loop through non assigned blocks.
             for j,block in enumerate([o for o in blocks if o.cluster<0]):
-                # (x,y,w,h) = block.getBoxesAsRectangle(scale)
-                # (cx,cy) = cluster.getClusterAbsoluteCoordinates()
-                # if ( cluster.xtranslate == x and cluster.ytranslate== y):
-                #     lines_counter+=1
-                #     block.cluster=1
-                #     block.sorting=cluster.getSorting()
-                #     block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
-                #     lineContours.append(block)
-                #     break
-
+                (x,y,w,h) = block.getBoxesAsRectangle(scale)
+                (cx,cy) = cluster.getClusterAbsoluteCoordinates()
                 if block.id == cluster.blockid:
-                    bboxlogger.debug("Cluster - Block match on id {0}".format(cluster.blockid))
-                    lines_counter+=1
-                    block.cluster=1
-                    block.sorting=cluster.getSorting()
-                    # block.sorting=(block.cluster,block.ymedian-(width-block.xmedian)*0.1)
-                    # block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
+                    if cluster.axis==1:
+                        if (cluster.ytranslate == y):
+                            bboxlogger.debug("First Pass - Cluster-Block match on id {0} [{1}]".format(cluster.blockid,block.text))
+                            lines_counter+=1
+                            block.cluster=1
+                            block.sorting=cluster.getSorting()
+                            lineContours.append(block)
+                            break
+                    else:
+                        if (cluster.xtranslate == x):
+                            bboxlogger.debug("First Pass - Cluster-Block match on id {0} [{1}]".format(cluster.blockid,block.text))
+                            lines_counter+=1
+                            block.cluster=1
+                            block.sorting=cluster.getSorting()
+                            lineContours.append(block)
+                            break
 
-                    lineContours.append(block)
-                    break
+                    # bboxlogger.debug("First Pass - Cluster-Block match on id {0} [{1}]".format(cluster.blockid,block.text))
+                    # lines_counter+=1
+                    # block.cluster=1
+                    # block.sorting=cluster.getSorting()
+                    # # block.sorting=(block.cluster,block.ymedian-(width-block.xmedian)*0.1)
+                    # # block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
+                    # lineContours.append(block)
+                    # break
+            if lines_counter>0:
+                bboxlogger.debug("First Pass - Cluster {0} Axis {3} assigned to {1} line(s) blockid {2} ".format(i,lines_counter,cluster.blockid,cluster.axis))
+            else:
+                # Second Pass - Loop through non assigned blocks.
+                for j,block in enumerate([o for o in blocks if o.cluster<0]):
+                    (x,y,w,h) = block.getBoxesAsRectangle(scale)
+                    (cx,cy) = cluster.getClusterAbsoluteCoordinates()
+                    # if ( cluster.xtranslate == x and cluster.ytranslate== y):
+                    #     lines_counter+=1
+                    #     block.cluster=1
+                    #     block.sorting=cluster.getSorting()
+                    #     block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
+                    #     lineContours.append(block)
+                    #     break
 
-                # if cluster.axis==1:
-                #     # Y-axis clusters aka columns
-                #     if y >= (cluster.startindex+yshift) and y <= (cluster.endindex+yshift):
-                #         lines_counter+=1
+                    if cluster.axis==1:
+                        if (cluster.ytranslate == y) or (cluster.ytranslate < y and (cluster.ytranslate+cluster.axis_size) == (y+h)) :
+                            bboxlogger.debug("Second Pass - Cluster-Block match on id {0} [{1}]".format(cluster.blockid,block.text))
+                            lines_counter+=1
+                            block.cluster=1
+                            block.sorting=cluster.getSorting()
+                            lineContours.append(block)
+                    else:
+                        if (cluster.xtranslate == x) or (cluster.xtranslate < x and (cluster.xtranslate+cluster.axis_size) == (x+w)):
+                            bboxlogger.debug("Second Pass - Cluster-Block match on id {0} [{1}]".format(cluster.blockid,block.text))
+                            lines_counter+=1
+                            block.cluster=1
+                            block.sorting=cluster.getSorting()
+                            lineContours.append(block)
 
-                #         block.cluster=1
-                #         block.sorting=cluster.getSorting()
-                #         # block.sorting=(block.cluster,block.ymedian-(width-block.xmedian)*0.1)
-                #         block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
+                    # if cluster.axis==1:
+                    #     # Y-axis clusters aka columns
+                    #     if y >= (cluster.startindex+yshift) and y <= (cluster.endindex+yshift):
+                    #         lines_counter+=1
 
-                #         lineContours.append(block)
-                # else:
-                #     # X-axis clusters aka rows
-                #     if x >= (cluster.startindex+xshift) and x <= (cluster.endindex+xshift):
-                #         lines_counter+=1
+                    #         block.cluster=1
+                    #         block.sorting=cluster.getSorting()
+                    #         # block.sorting=(block.cluster,block.ymedian-(width-block.xmedian)*0.1)
+                    #         block.sorting.append(block.ymedian-(width-block.xmedian)*0.1)
 
-                #         block.cluster=1
-                #         block.sorting=cluster.getSorting()
-                #         # block.cluster=cluster.level
-                #         # block.subcluster=cluster.rid
-                #         # block.sorting=(block.cluster,block.xmedian-(height-block.ymedian)*0.1)
-                #         block.sorting.append(block.xmedian-(height-block.ymedian)*0.1)
+                    #         lineContours.append(block)
+                    # else:
+                    #     # X-axis clusters aka rows
+                    #     if x >= (cluster.startindex+xshift) and x <= (cluster.endindex+xshift):
+                    #         lines_counter+=1
 
-                #         lineContours.append(block)
+                    #         block.cluster=1
+                    #         block.sorting=cluster.getSorting()
+                    #         # block.cluster=cluster.level
+                    #         # block.subcluster=cluster.rid
+                    #         # block.sorting=(block.cluster,block.xmedian-(height-block.ymedian)*0.1)
+                    #         block.sorting.append(block.xmedian-(height-block.ymedian)*0.1)
 
-            bboxlogger.debug("Cluster {0} Axis {3} assigned to {1} line(s) blockid {2} ".format(i,lines_counter,cluster.blockid,cluster.axis))
+                    #         lineContours.append(block)
+
+                bboxlogger.debug("Second Pass - Cluster {0} Axis {3} assigned to {1} line(s) blockid {2} ".format(i,lines_counter,cluster.blockid,cluster.axis))
 
         return lineContours
