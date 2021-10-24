@@ -53,7 +53,9 @@ class OCRUtils():
                 #     draw.text((line.xmedian, line.ymedian),str(round(line.rank,4)),fill ="red",font=font)
                 if line.sorting:
                     font = ImageFont.load_default()
-                    draw.text((line.xmedian-10, line.ymedian-10),str(line.sorting),fill ="red",font=font)
+                    draw.text((line.xmedian-15, line.ymedian-15),str(line.sorting),fill ="red",font=font)
+                if line.id:
+                    draw.text((line.xmedian, line.ymedian),str(line.id),fill ="green",font=font)
         return image
     # Draw CV2 Boxes 
     @classmethod
