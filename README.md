@@ -35,7 +35,7 @@ https://docs.aws.amazon.com/textract/latest/dg/API_DetectDocumentText.html
 >Our goal here is not to conduct a comparison between Azure, Google or AWS Computer Vision API but to provide a consistent way to output OCR text for further processing regardless of the underlying OCR Engine. 
 
 ## BBoxHelper - Get Started
-More information to get started can be found documentation of this repository: [documentation](https://puthurr.github.io/getting-started/).
+More information to get started can be found documentation of this repository: [documentation](https://puthurr.github.io/ocrlayout/getting-started/).
 
 ## PyPi Install (https://pypi.org/project/ocrlayout/)
 ```python
