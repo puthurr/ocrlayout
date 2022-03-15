@@ -5,7 +5,7 @@ from os import path
 def get_logger():
     # Load Logging default configuration 
     log_file_path = path.join(path.dirname(path.abspath(__file__)), 'config/logging.conf')
-    logging.config.fileConfig(log_file_path)
+    logging.config.fileConfig(log_file_path, disable_existing_loggers=False)
     bboxlogger = logging.getLogger('bboxhelper')  # get a logger
     bboxlogger.setLevel(logging.INFO)
     return bboxlogger
